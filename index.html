@@ -1196,12 +1196,10 @@
         let userRef = db.collection("usuarios").doc(user.uid);
         let userSnap = await userRef.get();
         
-        // Se o usuário já existe no Firestore, não bloqueia por dispositivo e respeita o status salvo dele (assinatura ou dias restantes)
         if (userSnap.exists) {
             return true;
         }
 
-        // Se é um usuário novo, verificamos se o dispositivo já usou teste grátis com OUTRA conta
         let deviceId = obterOuCriarDeviceId();
         let queryDispositivo = await db.collection("dispositivos_testes").where("deviceId", "==", deviceId).get();
         
@@ -1269,6 +1267,439 @@
     let memoriaConfig = { parcela: 1375, seguro: 0, diasMes: 26 };
     let semanaOffsetAtual = 0;
 
+    // Funções auxiliares de cálculo e lógica central
+    function atualizarValoresAutomaticosDia() {
+        let parcelaDia = memoriaConfig.diasMes > 0 ? (memoriaConfig.parcela / memoriaConfig.diasMes) : 0;
+        let seguroDia = memoriaConfig.diasMes > 0 ? (memoriaConfig.seguro / memoriaConfig.diasMes) : 0;
+        
+        let pEl = document.getElementById('parcelaCarro');
+        let sEl = document.getElementById('seguroCarro');
+        if(pEl) pEl.value = parcelaDia.toFixed(2);
+        if(sEl) sEl.value = seguroDia.toFixed(2);
+    }
+
+    function calcular() {
+        let bruto = parseFloat(document.getElementById('bruto').value) || 0;
+        let kmIni = parseFloat(document.getElementById('kmInicial').value) || 0;
+        let kmFim = parseFloat(document.getElementById('kmFinal').value) || 0;
+        let kmRodados = (kmFim > kmIni) ? (kmFim - kmIni) : 0;
+
+        let mediaKmLitro = parseFloat(document.getElementById('mediaKmLitro').value) || 10;
+        let valorAbastecido = parseFloat(document.getElementById('valorAbastecido').value) || 0;
+        
+        // Se não houver valor abastecido preenchido mas houver KM rodados, calcula automaticamente pelo consumo
+        let gastoCombustivel = valorAbastecido;
+        if (valorAbastecido === 0 && kmRodados > 0 && mediaKmLitro > 0) {
+            let precoLitro = parseFloat(document.getElementById('precoLitro').value) || 4.09;
+            gastoCombustivel = (kmRodados / mediaKmLitro) * precoLitro;
+        }
+
+        let parcelaDia = parseFloat(document.getElementById('parcelaCarro').value) || 0;
+        let seguroDia = parseFloat(document.getElementById('seguroCarro').value) || 0;
+        let custosFixosDia = parcelaDia + seguroDia;
+
+        let gastosRua = parseFloat(document.getElementById('gastosRua').value) || 0;
+
+        let ipvaReserva = parseFloat(document.getElementById('reservaIpva').value) || 0;
+        let manutReserva = parseFloat(document.getElementById('reservaManutencao').value) || 0;
+        let caixinhaReserva = parseFloat(document.getElementById('reservaCaixinha').value) || 0;
+        let totalReservas = ipvaReserva + manutReserva + caixinhaReserva;
+
+        let horasOnlineInput = document.getElementById('horasOnline').value;
+        let horasOnline = parseFloat(horasOnlineInput) || 0;
+
+        let liquido = bruto - gastoCombustivel - custosFixosDia - gastosRua - totalReservas;
+
+        let mediaPorHora = horasOnline > 0 ? (bruto / horasOnline) : 0;
+        let faturamentoPorKm = kmRodados > 0 ? (bruto / kmRodados) : 0;
+
+        document.getElementById('resKm').innerText = kmRodados + ' km';
+        document.getElementById('resCombustivel').innerText = 'R$ ' + gastoCombustivel.toFixed(2);
+        document.getElementById('resCustosFixos').innerText = 'R$ ' + custosFixosDia.toFixed(2);
+        document.getElementById('resGastosRua').innerText = 'R$ ' + gastosRua.toFixed(2);
+        document.getElementById('resPorHora').innerText = 'R$ ' + mediaPorHora.toFixed(2) + ' /h';
+        document.getElementById('resPorKm').innerText = 'R$ ' + faturamentoPorKm.toFixed(2) + ' /km';
+        document.getElementById('resLiquido').innerText = 'R$ ' + liquido.toFixed(2);
+    }
+
+    function calcularCombustivelPorLitros() {
+        let litros = parseFloat(document.getElementById('litros').value) || 0;
+        let precoLitro = parseFloat(document.getElementById('precoLitro').value) || 0;
+        if (litros > 0 && precoLitro > 0) {
+            document.getElementById('valorAbastecido').value = (litros * precoLitro).toFixed(2);
+        }
+        calcular();
+    }
+
+    function toggleCronometro() {
+        let btn = document.getElementById('btnChrono');
+        if (!cronometroAtivo) {
+            cronometroAtivo = true;
+            btn.innerText = 'Parar';
+            btn.className = 'btn-chrono btn-stop';
+            intervalo = setInterval(() => {
+                segundosTotais += 60; // Incrementa a cada minuto para testes práticos ou ajuste conforme preferir
+                let horas = (segundosTotais / 3600).toFixed(2);
+                document.getElementById('horasOnline').value = horas;
+                calcular();
+            }, 1000);
+        } else {
+            cronometroAtivo = false;
+            btn.innerText = 'Iniciar';
+            btn.className = 'btn-chrono btn-start';
+            clearInterval(intervalo);
+        }
+    }
+
+    function salvarConfiguracoes() {
+        memoriaConfig.parcela = parseFloat(document.getElementById('cfgParcelaMensal').value) || 0;
+        memoriaConfig.seguro = parseFloat(document.getElementById('cfgSeguroMensal').value) || 0;
+        memoriaConfig.diasMes = parseInt(document.getElementById('cfgDiasMes').value) || 26;
+        atualizarValoresAutomaticosDia();
+        salvarDadosNoServidor();
+        calcular();
+    }
+
+    function salvarDia() {
+        let data = document.getElementById('dataRegistro').value;
+        if (!data) { alert("Selecione uma data para salvar."); return; }
+        
+        let diaSemana = document.getElementById('diaSemana').value;
+        let bruto = parseFloat(document.getElementById('bruto').value) || 0;
+        let kmInicial = parseFloat(document.getElementById('kmInicial').value) || 0;
+        let kmFinal = parseFloat(document.getElementById('kmFinal').value) || 0;
+        let horasOnline = parseFloat(document.getElementById('horasOnline').value) || 0;
+        let litros = parseFloat(document.getElementById('litros').value) || 0;
+        let valorAbastecido = parseFloat(document.getElementById('valorAbastecido').value) || 0;
+        let gastosRua = parseFloat(document.getElementById('gastosRua').value) || 0;
+        let reservaIpva = parseFloat(document.getElementById('reservaIpva').value) || 0;
+        let reservaManutencao = parseFloat(document.getElementById('reservaManutencao').value) || 0;
+        let reservaCaixinha = parseFloat(document.getElementById('reservaCaixinha').value) || 0;
+        let editIndex = document.getElementById('editIndex').value;
+
+        let registroObj = {
+            data, diaSemana, bruto, kmInicial, kmFinal, horasOnline, litros,
+            valorAbastecido, gastosRua, reservaIpva, reservaManutencao, reservaCaixinha
+        };
+
+        if (editIndex !== "") {
+            memoriaHistorico[parseInt(editIndex)] = registroObj;
+            document.getElementById('editIndex').value = "";
+            document.getElementById('btnSalvar').innerText = "Salvar Dia no Histórico";
+        } else {
+            // Remove duplicado se já houver na mesma data
+            memoriaHistorico = memoriaHistorico.filter(item => item.data !== data);
+            memoriaHistorico.push(registroObj);
+        }
+
+        salvarDadosNoServidor();
+        renderizarHistorico();
+        renderizarSemanal();
+        renderizarMensal();
+        alert("Lançamento salvo com sucesso!");
+        mudarTab('historico');
+    }
+
+    function renderizarHistorico() {
+        let lista = document.getElementById('listaHistorico');
+        if (!lista) return;
+        lista.innerHTML = "";
+        
+        if (memoriaHistorico.length === 0) {
+            lista.innerHTML = '<div style="text-align: center; color: #777; padding: 20px;">Nenhum lançamento no histórico.</div>';
+            return;
+        }
+
+        // Ordenar por data decrescente
+        let historicoOrdenado = [...memoriaHistorico].sort((a, b) => new Date(b.data) - new Date(a.data));
+
+        historicoOrdenado.forEach((item, indexOriginal) => {
+            let div = document.createElement('div');
+            div.className = 'historico-item';
+            div.innerHTML = `
+                <div>
+                    <strong style="color: var(--primary-color);">${item.data.split('-').reverse().join('/')} (${item.diaSemana})</strong><br>
+                    <span style="font-size: 0.85rem; color: #ccc;">Bruto: R$ ${item.bruto.toFixed(2)} | KM: ${item.kmFinal - item.kmInicial} km</span>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn-sm btn-edit" onclick="editarRegistroHistorico('${item.data}')">Editar</button>
+                    <button class="btn-sm btn-delete" onclick="excluirRegistroHistorico('${item.data}')">Excluir</button>
+                </div>
+            `;
+            lista.appendChild(div);
+        });
+    }
+
+    function editarRegistroHistorico(dataIso) {
+        let item = memoriaHistorico.find(i => i.data === dataIso);
+        if (!item) return;
+
+        document.getElementById('dataRegistro').value = item.data;
+        document.getElementById('diaSemana').value = item.diaSemana;
+        document.getElementById('bruto').value = item.bruto;
+        document.getElementById('kmInicial').value = item.kmInicial;
+        document.getElementById('kmFinal').value = item.kmFinal;
+        document.getElementById('horasOnline').value = item.horasOnline;
+        document.getElementById('litros').value = item.litros;
+        document.getElementById('valorAbastecido').value = item.valorAbastecido;
+        document.getElementById('gastosRua').value = item.gastosRua;
+        document.getElementById('reservaIpva').value = item.reservaIpva;
+        document.getElementById('reservaManutencao').value = item.reservaManutencao;
+        document.getElementById('reservaCaixinha').value = item.reservaCaixinha;
+
+        let index = memoriaHistorico.findIndex(i => i.data === dataIso);
+        document.getElementById('editIndex').value = index;
+        document.getElementById('btnSalvar').innerText = "Atualizar Lançamento";
+
+        calcular();
+        mudarTab('diario');
+    }
+
+    function excluirRegistroHistorico(dataIso) {
+        if (confirm("Deseja realmente excluir este lançamento?")) {
+            memoriaHistorico = memoriaHistorico.filter(i => i.data !== dataIso);
+            salvarDadosNoServidor();
+            renderizarHistorico();
+            renderizarSemanal();
+            renderizarMensal();
+        }
+    }
+
+    // Funções de Manutenção do Carro
+    function alternarParcelasPeca() {
+        let forma = document.getElementById('manutFormaPeca').value;
+        let cVenc = document.getElementById('containerVencimentoPeca');
+        let cParc = document.getElementById('containerParcelasPeca');
+        if (forma === 'Crédito') {
+            cVenc.style.display = 'block';
+            cParc.style.display = 'block';
+        } else {
+            cVenc.style.display = 'none';
+            cParc.style.display = 'none';
+        }
+    }
+
+    function alternarParcelasObra() {
+        let forma = document.getElementById('manutFormaObra').value;
+        let cVenc = document.getElementById('containerVencimentoObra');
+        let cParc = document.getElementById('containerParcelasObra');
+        if (forma === 'Crédito') {
+            cVenc.style.display = 'block';
+            cParc.style.display = 'block';
+        } else {
+            cVenc.style.display = 'none';
+            cParc.style.display = 'none';
+        }
+    }
+
+    function salvarManutencaoCarro() {
+        let servico = document.getElementById('manutServico').value.trim();
+        if (!servico) { alert("Informe o serviço de manutenção."); return; }
+
+        let valPeca = parseFloat(document.getElementById('manutValorPeca').value) || 0;
+        let formaPeca = document.getElementById('manutFormaPeca').value;
+        let vencPeca = document.getElementById('manutVencimentoPeca').value;
+        let parcPeca = parseInt(document.getElementById('manutParcelasPeca').value) || 1;
+
+        let valObra = parseFloat(document.getElementById('manutMaoObra').value) || 0;
+        let formaObra = document.getElementById('manutFormaObra').value;
+        let vencObra = document.getElementById('manutVencimentoObra').value;
+        let parcObra = parseInt(document.getElementById('manutParcelasObraSelect').value) || 1;
+
+        let kmFeito = parseInt(document.getElementById('manutKmFeito').value) || 0;
+        let kmRefazer = parseInt(document.getElementById('manutKmRefazer').value) || 0;
+        let editId = document.getElementById('editManutencaoId').value;
+
+        let manutObj = {
+            id: editId !== "" ? editId : 'm_' + Date.now(),
+            servico, valPeca, formaPeca, vencPeca, parcPeca,
+            valObra, formaObra, vencObra, parcObra, kmFeito, kmRefazer
+        };
+
+        if (editId !== "") {
+            let idx = memoriaManutencoes.findIndex(m => m.id === editId);
+            if (idx >= 0) memoriaManutencoes[idx] = manutObj;
+            cancelarEdicaoManutencaoCarro();
+        } else {
+            memoriaManutencoes.push(manutObj);
+            // Limpa campos
+            document.getElementById('manutServico').value = '';
+            document.getElementById('manutValorPeca').value = '';
+            document.getElementById('manutMaoObra').value = '';
+            document.getElementById('manutKmFeito').value = '';
+            document.getElementById('manutKmRefazer').value = '';
+        }
+
+        salvarDadosNoServidor();
+        renderizarManutencoesCarro();
+        renderizarSemanal();
+        renderizarMensal();
+        alert("Manutenção salva com sucesso!");
+    }
+
+    function renderizarManutencoesCarro() {
+        let lista = document.getElementById('listaManutencoesCarro');
+        if (!lista) return;
+        lista.innerHTML = "";
+
+        if (memoriaManutencoes.length === 0) {
+            lista.innerHTML = '<div style="text-align: center; color: #777; padding: 15px;">Nenhuma manutenção registrada.</div>';
+            return;
+        }
+
+        memoriaManutencoes.forEach(m => {
+            let total = m.valPeca + m.valObra;
+            let div = document.createElement('div');
+            div.className = 'historico-item';
+            div.innerHTML = `
+                <div>
+                    <strong style="color: var(--primary-color);">${m.servico}</strong><br>
+                    <span style="font-size: 0.85rem; color: #ccc;">Total: R$ ${total.toFixed(2)} | KM: ${m.kmFeito} (Prox: ${m.kmRefazer})</span>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn-sm btn-edit" onclick="editarManutencaoCarro('${m.id}')">Editar</button>
+                    <button class="btn-sm btn-delete" onclick="excluirManutencaoCarro('${m.id}')">Excluir</button>
+                </div>
+            `;
+            lista.appendChild(div);
+        });
+    }
+
+    function editarManutencaoCarro(id) {
+        let m = memoriaManutencoes.find(item => item.id === id);
+        if (!m) return;
+
+        document.getElementById('editManutencaoId').value = m.id;
+        document.getElementById('manutServico').value = m.servico;
+        document.getElementById('manutValorPeca').value = m.valPeca;
+        document.getElementById('manutFormaPeca').value = m.formaPeca;
+        alternarParcelasPeca();
+        if (m.vencPeca) document.getElementById('manutVencimentoPeca').value = m.vencPeca;
+        document.getElementById('manutParcelasPeca').value = m.parcPeca;
+
+        document.getElementById('manutMaoObra').value = m.valObra;
+        document.getElementById('manutFormaObra').value = m.formaObra;
+        alternarParcelasObra();
+        if (m.vencObra) document.getElementById('manutVencimentoObra').value = m.vencObra;
+        document.getElementById('manutParcelasObraSelect').value = m.parcObra;
+
+        document.getElementById('manutKmFeito').value = m.kmFeito;
+        document.getElementById('manutKmRefazer').value = m.kmRefazer;
+
+        document.getElementById('btnSalvarManutencao').innerText = "Atualizar Manutenção";
+        document.getElementById('btnCancelarManutencao').style.display = 'block';
+    }
+
+    function cancelarEdicaoManutencaoCarro() {
+        document.getElementById('editManutencaoId').value = '';
+        document.getElementById('manutServico').value = '';
+        document.getElementById('manutValorPeca').value = '';
+        document.getElementById('manutMaoObra').value = '';
+        document.getElementById('manutKmFeito').value = '';
+        document.getElementById('manutKmRefazer').value = '';
+        document.getElementById('btnSalvarManutencao').innerText = "Adicionar Manutenção";
+        document.getElementById('btnCancelarManutencao').style.display = 'none';
+    }
+
+    function excluirManutencaoCarro(id) {
+        if (confirm("Deseja excluir esta manutenção?")) {
+            memoriaManutencoes = memoriaManutencoes.filter(m => m.id !== id);
+            salvarDadosNoServidor();
+            renderizarManutencoesCarro();
+            renderizarSemanal();
+            renderizarMensal();
+        }
+    }
+
+    // Funções Semanais e Mensais (Resumos e Gráficos de Calendário)
+    function renderizarSemanal() {
+        let labelIntervalo = document.getElementById('semanaLabelIntervalo');
+        if(labelIntervalo) labelIntervalo.innerText = "Semana Atual";
+        
+        let brutoTotal = memoriaHistorico.reduce((acc, cur) => acc + (cur.bruto || 0), 0);
+        let brutoGrande = document.getElementById('semanaBrutoGrande');
+        if(brutoGrande) brutoGrande.innerText = 'R$ ' + brutoTotal.toFixed(2);
+    }
+
+    function renderizarMensal() {
+        let filtroMes = document.getElementById('filtroMesAno').value;
+        if (!filtroMes) return;
+
+        let [ano, mes] = filtroMes.split('-');
+        let filtrados = memoriaHistorico.filter(item => {
+            if(!item.data) return false;
+            let [y, m] = item.data.split('-');
+            return y === ano && m === mes;
+        });
+
+        let brutoMes = filtrados.reduce((acc, cur) => acc + (cur.bruto || 0), 0);
+        let mesBrutoGrande = document.getElementById('mesBrutoGrande');
+        if(mesBrutoGrande) mesBrutoGrande.innerText = 'R$ ' + brutoMes.toFixed(2);
+    }
+
+    function tentarVoltarAoDiario() {
+        if (contaBloqueadaGlobal) {
+            alert("Sua assinatura está expirada. Renove para continuar.");
+            return;
+        }
+        mudarTab('diario');
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+        let telaLogin = document.getElementById('telaLogin');
+        let containerPrincipal = document.getElementById('containerPrincipal');
+
+        if (user) {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('status') === 'success') {
+                let tipoPlano = urlParams.get('plano') || 'mensal';
+                let diasParaAdicionar = tipoPlano === 'semanal' ? 7 : (tipoPlano === 'anual' ? 365 : 30);
+                let nomeExibicaoPlano = tipoPlano === 'semanal' ? 'Plano Semanal' : (tipoPlano === 'anual' ? 'Plano Anual' : 'Plano Mensal');
+
+                alert(`🎉 Pagamento aprovado! Ativando o seu ${nomeExibicaoPlano}.`);
+
+                try {
+                    let userRef = db.collection("usuarios").doc(user.uid);
+                    let docSnap = await userRef.get();
+                    let dadosAtuais = docSnap.exists ? docSnap.data() : {};
+
+                    let baseDate = new Date();
+                    if (dadosAtuais.assinaturaAtiva && dadosAtuais.dataExpiracao) {
+                        let expAtual = new Date(dadosAtuais.dataExpiracao);
+                        if (expAtual > baseDate) baseDate = expAtual;
+                    }
+                    baseDate.setDate(baseDate.getDate() + diasParaAdicionar);
+
+                    await userRef.set({
+                        assinaturaAtiva: true,
+                        nomePlano: nomeExibicaoPlano,
+                        dataExpiracao: baseDate.toISOString()
+                    }, { merge: true });
+
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } catch (err) {
+                    console.error("Erro ao atualizar assinatura:", err);
+                }
+            }
+
+            let permitido = await processarNovoUsuarioOuDispositivo(user);
+            if (!permitido) return;
+
+            if(telaLogin) telaLogin.style.display = 'none';
+            if(containerPrincipal) containerPrincipal.style.display = 'block';
+            
+            let emailEl = document.getElementById('menuEmailUsuario');
+            if(emailEl) emailEl.innerText = user.email || "E-mail não informado";
+
+            await verificarEAtualizarStatusAssinaturaFirestore(user);
+            await carregarDadosDoServidor(user.uid);
+
+        } else {
+            if(telaLogin) telaLogin.style.display = 'flex';
+            if(containerPrincipal) containerPrincipal.style.display = 'none';
+        }
+    });
+
     async function carregarDadosDoServidor(uid) {
         try {
             let docRef = db.collection("usuarios").doc(uid);
@@ -1285,7 +1716,7 @@
                 }
             }
         } catch (e) {
-            console.error("Erro ao carregar dados do Firestore:", e);
+            console.error("Erro ao carregar dados:", e);
         }
         atualizarValoresAutomaticosDia();
         calcular();
@@ -1305,202 +1736,9 @@
                 config: memoriaConfig
             }, { merge: true });
         } catch (e) {
-            console.error("Erro ao salvar dados no Firestore:", e);
+            console.error("Erro ao salvar dados:", e);
         }
     }
-
-    auth.onAuthStateChanged(async (user) => {
-        let telaLogin = document.getElementById('telaLogin');
-        let containerPrincipal = document.getElementById('containerPrincipal');
-
-        if (user) {
-            // Bloco integrado de verificação de pagamento bem-sucedido
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('status') === 'success') {
-                let tipoPlano = urlParams.get('plano') || 'mensal'; // Padrão mensal se não vier especificado
-                let diasParaAdicionar = 30;
-                let nomeExibicaoPlano = "Plano Mensal";
-
-                if (tipoPlano === 'semanal') {
-                    diasParaAdicionar = 7;
-                    nomeExibicaoPlano = "Plano Semanal";
-                } else if (tipoPlano === 'anual') {
-                    diasParaAdicionar = 365;
-                    nomeExibicaoPlano = "Plano Anual";
-                }
-
-                alert(`🎉 Pagamento aprovado com sucesso! Ativando o seu ${nomeExibicaoPlano}.`);
-
-                try {
-                    let userRef = db.collection("usuarios").doc(user.uid);
-                    let docSnap = await userRef.get();
-                    let dadosAtuais = docSnap.exists ? docSnap.data() : {};
-
-                    let baseDate = new Date();
-                    // Se já tiver uma assinatura ativa e a data de expiração for no futuro, soma a partir dela
-                    if (dadosAtuais.assinaturaAtiva && dadosAtuais.dataExpiracao) {
-                        let expAtual = new Date(dadosAtuais.dataExpiracao);
-                        if (expAtual > baseDate) {
-                            baseDate = expAtual;
-                        }
-                    }
-
-                    baseDate.setDate(baseDate.getDate() + diasParaAdicionar);
-
-                    await userRef.set({
-                        assinaturaAtiva: true,
-                        nomePlano: nomeExibicaoPlano,
-                        dataExpiracao: baseDate.toISOString()
-                    }, { merge: true });
-
-                    // Limpa os parâmetros da URL para evitar reprocessar ao atualizar a página
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                } catch (err) {
-                    console.error("Erro ao atualizar assinatura pós-pagamento:", err);
-                }
-            }
-
-            let permitido = await processarNovoUsuarioOuDispositivo(user);
-            if (!permitido) return;
-
-            if(telaLogin) telaLogin.style.display = 'none';
-            if(containerPrincipal) containerPrincipal.style.display = 'block';
-            
-            let emailEl = document.getElementById('menuEmailUsuario');
-            if(emailEl) emailEl.innerText = user.email || "E-mail não informado";
-
-            await verificarEAtualizarStatusAssinaturaFirestore(user);
-            await carregarDadosDoServidor(user.uid);
-
-            if (intervaloVerificacaoAssinatura) clearInterval(intervaloVerificacaoAssinatura);
-            intervaloVerificacaoAssinatura = setInterval(() => {
-                if (auth.currentUser) {
-                    verificarEAtualizarStatusAssinaturaFirestore(auth.currentUser);
-                }
-            }, 60000);
-
-        } else {
-            if(intervaloVerificacaoAssinatura) clearInterval(intervaloVerificacaoAssinatura);
-            if(telaLogin) telaLogin.style.display = 'flex';
-            if(containerPrincipal) containerPrincipal.style.display = 'none';
-        }
-    });
-
-    function toggleMenuDropdown() {
-        let dropdown = document.getElementById('menuDropdown');
-        if(dropdown) dropdown.classList.toggle('show');
-    }
-
-    async function fazerLoginEmailSenha() {
-        let email = document.getElementById('loginEmail').value.trim();
-        let senha = document.getElementById('loginSenha').value.trim();
-        if (!email || !senha) { alert("Preencha o e-mail e a senha."); return; }
-        try {
-            await auth.signInWithEmailAndPassword(email, senha);
-        } catch (erro) {
-            alert("Erro ao entrar: " + erro.message);
-        }
-    }
-
-    async function fazerCadastroEmailSenha() {
-        let email = document.getElementById('loginEmail').value.trim();
-        let senha = document.getElementById('loginSenha').value.trim();
-        if (!email || !senha) { alert("Preencha o e-mail e a senha para cadastrar."); return; }
-        let deviceId = obterOuCriarDeviceId();
-
-        try {
-            let queryDispositivo = await db.collection("dispositivos_testes").where("deviceId", "==", deviceId).get();
-            if (!queryDispositivo.empty) {
-                let docDispositivo = queryDispositivo.docs[0].data();
-                let snapshotOutroUser = await db.collection("usuarios").doc(docDispositivo.uid).get();
-                let dadosOutro = snapshotOutroUser.exists ? snapshotOutroUser.data() : {};
-                if (!dadosOutro.assinaturaAtiva) {
-                    alert("❌ Este aparelho/navegador já utilizou o período de teste gratuito anteriormente. Faça login na sua conta existente.");
-                    return;
-                }
-            }
-
-            let userCredential = await auth.createUserWithEmailAndPassword(email, senha);
-            let user = userCredential.user;
-            let dataCriacao = new Date().toISOString();
-
-            await db.collection("usuarios").doc(user.uid).set({
-                primeiroAcesso: dataCriacao,
-                assinaturaAtiva: false,
-                nomePlano: "Teste Grátis",
-                dataExpiracao: "",
-                deviceId: deviceId,
-                historico: [],
-                manutencoes: [],
-                config: { parcela: 1375, seguro: 0, diasMes: 26 }
-            }, { merge: true });
-
-            await db.collection("dispositivos_testes").add({
-                deviceId: deviceId,
-                emailUsado: email,
-                dataUso: dataCriacao,
-                uid: user.uid
-            });
-
-            alert("Conta criada com sucesso!");
-        } catch (erro) {
-            alert("Erro ao cadastrar: " + erro.message);
-        }
-    }
-
-    function abrirModalEsqueciSenha() {
-        let emailAtual = document.getElementById('loginEmail').value.trim();
-        if(emailAtual) document.getElementById('emailRecuperacao').value = emailAtual;
-        document.getElementById('modalEsqueciSenha').style.display = 'flex';
-    }
-
-    function fecharModalEsqueciSenha() {
-        document.getElementById('modalEsqueciSenha').style.display = 'none';
-    }
-
-    async function enviarEmailRecuperacao() {
-        let email = document.getElementById('emailRecuperacao').value.trim();
-        if (!email) { alert("Digite o seu e-mail cadastrado."); return; }
-        try {
-            await auth.sendPasswordResetEmail(email);
-            alert("📧 E-mail de redefinição de senha enviado com sucesso para:\n" + email);
-            fecharModalEsqueciSenha();
-        } catch (erro) {
-            alert("❌ Erro ao enviar e-mail de recuperação: " + erro.message);
-        }
-    }
-
-    async function sairDaConta() {
-        if (confirm("Deseja realmente sair da sua conta?")) {
-            await auth.signOut();
-        }
-    }
-
-    window.atualizarDiaSemanaPorData = function(idInputData, idSelectDiaSemana) {
-        let valData = document.getElementById(idInputData).value;
-        if (!valData) return;
-        let partes = valData.split('-');
-        let dataObj = new Date(partes[0], partes[1] - 1, partes[2]);
-        const diasSemana = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-        let selectEl = document.getElementById(idSelectDiaSemana);
-        if(selectEl) selectEl.value = diasSemana[dataObj.getDay()];
-    };
-
-    window.onload = function() {
-        let dataHoje = new Date();
-        let filtroMes = document.getElementById('filtroMesAno');
-        if(filtroMes) filtroMes.value = `${dataHoje.getFullYear()}-${String(dataHoje.getMonth() + 1).padStart(2, '0')}`;
-        let dataReg = document.getElementById('dataRegistro');
-        if(dataReg && !dataReg.value) dataReg.valueAsDate = new Date();
-        let vencPeca = document.getElementById('manutVencimentoPeca');
-        if(vencPeca && !vencPeca.value) vencPeca.valueAsDate = new Date();
-        let vencObra = document.getElementById('manutVencimentoObra');
-        if(vencObra && !vencObra.value) vencObra.valueAsDate = new Date();
-        
-        atualizarDiaSemanaPorData('dataRegistro', 'diaSemana');
-        atualizarValoresAutomaticosDia();
-        calcular();
-    };
 
     async function verificarEAtualizarStatusAssinaturaFirestore(user) {
         let docRef = db.collection("usuarios").doc(user.uid);
@@ -1513,6 +1751,14 @@
         let diasRestantes = 0, bloqueado = false;
 
         let agora = new Date();
+
+        // Se veio do pagamento agora mesmo, nem bloqueia para dar tempo de processar
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('status') === 'success') {
+            contaBloqueadaGlobal = false;
+            if(telaBloqueio) telaBloqueio.style.display = 'none';
+            return;
+        }
 
         if (dados.assinaturaAtiva) {
             if (dados.dataExpiracao) {
@@ -1558,6 +1804,32 @@
             if(telaBloqueio) telaBloqueio.style.display = 'none';
         }
     }
+
+    window.onload = function() {
+        let dataHoje = new Date();
+        let filtroMes = document.getElementById('filtroMesAno');
+        if(filtroMes) filtroMes.value = `${dataHoje.getFullYear()}-${String(dataHoje.getMonth() + 1).padStart(2, '0')}`;
+        let dataReg = document.getElementById('dataRegistro');
+        if(dataReg && !dataReg.value) dataReg.valueAsDate = new Date();
+        let vencPeca = document.getElementById('manutVencimentoPeca');
+        if(vencPeca && !vencPeca.value) vencPeca.valueAsDate = new Date();
+        let vencObra = document.getElementById('manutVencimentoObra');
+        if(vencObra && !vencObra.value) vencObra.valueAsDate = new Date();
+        
+        atualizarDiaSemanaPorData('dataRegistro', 'diaSemana');
+        atualizarValoresAutomaticosDia();
+        calcular();
+    };
+
+    window.atualizarDiaSemanaPorData = function(idInputData, idSelectDiaSemana) {
+        let valData = document.getElementById(idInputData).value;
+        if (!valData) return;
+        let partes = valData.split('-');
+        let dataObj = new Date(partes[0], partes[1] - 1, partes[2]);
+        const diasSemana = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+        let selectEl = document.getElementById(idSelectDiaSemana);
+        if(selectEl) selectEl.value = diasSemana[dataObj.getDay()];
+    };
 </script>
 </body>
 </html>
