@@ -655,7 +655,7 @@
             <h3>Plano Semanal</h3>
             <p class="price">R$ 9,90 <span>/ semana</span></p>
             <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">Ideal para testar com flexibilidade total.</p>
-            <a href="https://checkout.infinitepay.io/paulovictorrx7/GZtYH3OZso" target="_blank" class="btn-action" style="margin-top:0;">Assinar Semanal</a>
+            <button onclick="irParaPagamento('semanal', 'https://checkout.infinitepay.io/paulovictorrx7/GZtYH3OZso')" class="btn-action" style="margin-top:0;">Assinar Semanal</button>
         </div>
 
         <div class="pricing-card popular" style="margin-top: 12px;">
@@ -663,14 +663,14 @@
             <h3>Plano Mensal</h3>
             <p class="price">R$ 29,90 <span>/ mês</span></p>
             <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">Melhor custo-benefício para o dia a dia.</p>
-            <a href="https://checkout.infinitepay.io/paulovictorrx7/2AdnI0LcqA" target="_blank" class="btn-action" style="margin-top:0;">Assinar Mensal</a>
+            <button onclick="irParaPagamento('mensal', 'https://checkout.infinitepay.io/paulovictorrx7/2AdnI0LcqA')" class="btn-action" style="margin-top:0;">Assinar Mensal</button>
         </div>
 
         <div class="pricing-card" style="margin-top: 12px;">
             <h3>Plano Anual</h3>
             <p class="price">R$ 199,90 <span>/ ano</span></p>
             <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">Economia máxima garantida por 12 meses.</p>
-            <a href="https://checkout.infinitepay.io/paulovictorrx7/7fO8ssuEPk" target="_blank" class="btn-action" style="margin-top:0; background: var(--uber-purple); color: #fff;">Assinar Anual</a>
+            <button onclick="irParaPagamento('anual', 'https://checkout.infinitepay.io/paulovictorrx7/7fO8ssuEPk')" class="btn-action" style="margin-top:0; background: var(--uber-purple); color: #fff;">Assinar Anual</button>
         </div>
 
         <div style="margin-top: 20px; padding: 12px; background: #181818; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; font-size: 0.85rem;">
@@ -1167,7 +1167,20 @@
 
     let contaBloqueadaGlobal = false;
     let ultimoJsonCarregado = null;
-    let unsubscribeAssinatura = null; // Listener em tempo real da assinatura
+    let unsubscribeAssinatura = null;
+
+    // Função integrada para redirecionamento do pagamento InfinitePay com parâmetros de rastreio UID e e-mail
+    function irParaPagamento(tipoPlano, urlBaseInfinitePay) {
+        let user = auth.currentUser;
+        if (!user) {
+            alert("Você precisa estar logado para assinar.");
+            return;
+        }
+        
+        let urlFinal = urlBaseInfinitePay + (urlBaseInfinitePay.includes('?') ? '&' : '?') + "reference_id=" + user.uid + "&plano=" + tipoPlano + "&email=" + encodeURIComponent(user.email);
+        
+        window.open(urlFinal, '_blank');
+    }
 
     async function verificarAtualizacoes() {
       try {
@@ -1238,7 +1251,6 @@
         return true;
     }
 
-    // Monitor de autenticação e escuta em tempo real do documento do usuário
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             document.getElementById('telaLogin').style.display = 'none';
@@ -1246,7 +1258,6 @@
             let emailEl = document.getElementById('menuEmailUsuario');
             if(emailEl) emailEl.innerText = user.email;
 
-            // Iniciar ou escutar em tempo real o status da assinatura no Firestore
             if (unsubscribeAssinatura) unsubscribeAssinatura();
             
             unsubscribeAssinatura = db.collection("usuarios").doc(user.uid).onSnapshot((docSnap) => {
@@ -1276,7 +1287,6 @@
         let textoStatus = "Bloqueado";
         let textoDiasRestantes = "Assinatura Expirada";
 
-        // Verifica se há data de expiração válida no Firestore
         if (dadosUsuario.dataExpiracao) {
             let dataExp = new Date(dadosUsuario.dataExpiracao);
             if (dataExp > agora) {
@@ -1288,10 +1298,9 @@
             }
         }
 
-        // Se não tiver assinatura ativa por data, verifica o período de teste grátis (ex: 3 dias a partir do primeiro acesso)
         if (!assinaturaAtiva && dadosUsuario.primeiroAcesso) {
             let dataCriacao = new Date(dadosUsuario.primeiroAcesso);
-            let limiteTeste = new Date(dataCriacao.getTime() + (3 * 24 * 60 * 60 * 1000)); // 3 dias de teste
+            let limiteTeste = new Date(dataCriacao.getTime() + (3 * 24 * 60 * 60 * 1000));
             if (limiteTeste > agora) {
                 let diffTempo = limiteTeste - agora;
                 let horasRestantes = Math.ceil(diffTempo / (1000 * 60 * 60));
@@ -1302,7 +1311,6 @@
             }
         }
 
-        // Atualiza interface do menu e status
         let statusTextoEl = document.getElementById('menuStatusTexto');
         let statusPlanoDiasEl = document.getElementById('statusPlanoDias');
         let telaBloqueioEl = document.getElementById('telaBloqueio');
@@ -1353,7 +1361,6 @@
     let memoriaConfig = { parcela: 1375, seguro: 0, diasMes: 26 };
     let semanaOffsetAtual = 0;
 
-    // Funções auxiliares de cálculo e lógica central
     function atualizarValoresAutomaticosDia() {
         let parcelaDia = memoriaConfig.diasMes > 0 ? (memoriaConfig.parcela / memoriaConfig.diasMes) : 0;
         let seguroDia = memoriaConfig.diasMes > 0 ? (memoriaConfig.seguro / memoriaConfig.diasMes) : 0;
@@ -1548,7 +1555,6 @@
         }
     }
 
-    // Funções de Manutenção do Carro
     function alternarParcelasPeca() {
         let forma = document.getElementById('manutFormaPeca').value;
         let cVenc = document.getElementById('containerVencimentoPeca');
@@ -1575,7 +1581,6 @@
         }
     }
 
-    // Funções complementares do sistema de sincronização e menus
     function toggleMenuDropdown() {
         let menu = document.getElementById('menuDropdown');
         if (menu) menu.classList.toggle('show');
