@@ -1193,43 +1193,49 @@
     }
 
     async function processarNovoUsuarioOuDispositivo(user) {
-        let deviceId = obterOuCriarDeviceId();
         let userRef = db.collection("usuarios").doc(user.uid);
         let userSnap = await userRef.get();
+        
+        // Se o usuário já existe no Firestore, não bloqueia por dispositivo e respeita o status salvo dele (assinatura ou dias restantes)
+        if (userSnap.exists) {
+            return true;
+        }
+
+        // Se é um usuário novo, verificamos se o dispositivo já usou teste grátis com OUTRA conta
+        let deviceId = obterOuCriarDeviceId();
         let queryDispositivo = await db.collection("dispositivos_testes").where("deviceId", "==", deviceId).get();
         
-        if (!userSnap.exists) {
-            if (!queryDispositivo.empty) {
-                let docDispositivo = queryDispositivo.docs[0].data();
-                if (docDispositivo.uid !== user.uid) {
-                    let snapshotOutroUser = await db.collection("usuarios").doc(docDispositivo.uid).get();
-                    let dadosOutro = snapshotOutroUser.exists ? snapshotOutroUser.data() : {};
-                    if (!dadosOutro.assinaturaAtiva) {
-                        await auth.signOut();
-                        alert("❌ Acesso negado: Este aparelho/navegador já utilizou o período de teste gratuito anteriormente com outra conta.");
-                        return false;
-                    }
+        if (!queryDispositivo.empty) {
+            let docDispositivo = queryDispositivo.docs[0].data();
+            if (docDispositivo.uid !== user.uid) {
+                let snapshotOutroUser = await db.collection("usuarios").doc(docDispositivo.uid).get();
+                let dadosOutro = snapshotOutroUser.exists ? snapshotOutroUser.data() : {};
+                if (!dadosOutro.assinaturaAtiva) {
+                    await auth.signOut();
+                    alert("❌ Acesso negado: Este aparelho/navegador já utilizou o período de teste gratuito anteriormente com outra conta. Faça login na sua conta principal ou assine um plano.");
+                    return false;
                 }
             }
-
-            let dataCriacao = new Date().toISOString();
-            if (queryDispositivo.empty) {
-                await db.collection("dispositivos_testes").add({
-                    deviceId: deviceId,
-                    emailUsado: user.email,
-                    dataUso: dataCriacao,
-                    uid: user.uid
-                });
-            }
-
-            await userRef.set({
-                primeiroAcesso: dataCriacao,
-                assinaturaAtiva: false,
-                nomePlano: "Teste Grátis",
-                dataExpiracao: "",
-                deviceId: deviceId
-            }, { merge: true });
         }
+
+        let dataCriacao = new Date().toISOString();
+        if (queryDispositivo.empty) {
+            await db.collection("dispositivos_testes").add({
+                deviceId: deviceId,
+                emailUsado: user.email,
+                dataUso: dataCriacao,
+                uid: user.uid
+            });
+        }
+
+        await userRef.set({
+            primeiroAcesso: dataCriacao,
+            assinaturaAtiva: false,
+            nomePlano: "Teste Grátis",
+            dataExpiracao: "",
+            deviceId: deviceId
+        }, { merge: true });
+
         return true;
     }
 
@@ -1308,29 +1314,60 @@
         let containerPrincipal = document.getElementById('containerPrincipal');
 
         if (user) {
-            if(telaLogin) telaLogin.style.display = 'none';
-            if(containerPrincipal) containerPrincipal.style.display = 'block';
-            
-            let emailEl = document.getElementById('menuEmailUsuario');
-            if(emailEl) emailEl.innerText = user.email || "E-mail não informado";
-
+            // Bloco integrado de verificação de pagamento bem-sucedido
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('status') === 'success') {
-                alert("🎉 Pagamento aprovado com sucesso! Bem-vindo à assinatura completa.");
-                let dataExpiracao = new Date();
-                dataExpiracao.setDate(dataExpiracao.getDate() + 30);
-                
+                let tipoPlano = urlParams.get('plano') || 'mensal'; // Padrão mensal se não vier especificado
+                let diasParaAdicionar = 30;
+                let nomeExibicaoPlano = "Plano Mensal";
+
+                if (tipoPlano === 'semanal') {
+                    diasParaAdicionar = 7;
+                    nomeExibicaoPlano = "Plano Semanal";
+                } else if (tipoPlano === 'anual') {
+                    diasParaAdicionar = 365;
+                    nomeExibicaoPlano = "Plano Anual";
+                }
+
+                alert(`🎉 Pagamento aprovado com sucesso! Ativando o seu ${nomeExibicaoPlano}.`);
+
                 try {
-                    await db.collection("usuarios").doc(user.uid).set({
+                    let userRef = db.collection("usuarios").doc(user.uid);
+                    let docSnap = await userRef.get();
+                    let dadosAtuais = docSnap.exists ? docSnap.data() : {};
+
+                    let baseDate = new Date();
+                    // Se já tiver uma assinatura ativa e a data de expiração for no futuro, soma a partir dela
+                    if (dadosAtuais.assinaturaAtiva && dadosAtuais.dataExpiracao) {
+                        let expAtual = new Date(dadosAtuais.dataExpiracao);
+                        if (expAtual > baseDate) {
+                            baseDate = expAtual;
+                        }
+                    }
+
+                    baseDate.setDate(baseDate.getDate() + diasParaAdicionar);
+
+                    await userRef.set({
                         assinaturaAtiva: true,
-                        nomePlano: "Plano Completo",
-                        dataExpiracao: dataExpiracao.toISOString()
+                        nomePlano: nomeExibicaoPlano,
+                        dataExpiracao: baseDate.toISOString()
                     }, { merge: true });
+
+                    // Limpa os parâmetros da URL para evitar reprocessar ao atualizar a página
                     window.history.replaceState({}, document.title, window.location.pathname);
                 } catch (err) {
                     console.error("Erro ao atualizar assinatura pós-pagamento:", err);
                 }
             }
+
+            let permitido = await processarNovoUsuarioOuDispositivo(user);
+            if (!permitido) return;
+
+            if(telaLogin) telaLogin.style.display = 'none';
+            if(containerPrincipal) containerPrincipal.style.display = 'block';
+            
+            let emailEl = document.getElementById('menuEmailUsuario');
+            if(emailEl) emailEl.innerText = user.email || "E-mail não informado";
 
             await verificarEAtualizarStatusAssinaturaFirestore(user);
             await carregarDadosDoServidor(user.uid);
@@ -1374,8 +1411,13 @@
         try {
             let queryDispositivo = await db.collection("dispositivos_testes").where("deviceId", "==", deviceId).get();
             if (!queryDispositivo.empty) {
-                alert("❌ Este aparelho/navegador já utilizou o período de teste gratuito anteriormente.");
-                return;
+                let docDispositivo = queryDispositivo.docs[0].data();
+                let snapshotOutroUser = await db.collection("usuarios").doc(docDispositivo.uid).get();
+                let dadosOutro = snapshotOutroUser.exists ? snapshotOutroUser.data() : {};
+                if (!dadosOutro.assinaturaAtiva) {
+                    alert("❌ Este aparelho/navegador já utilizou o período de teste gratuito anteriormente. Faça login na sua conta existente.");
+                    return;
+                }
             }
 
             let userCredential = await auth.createUserWithEmailAndPassword(email, senha);
@@ -1472,44 +1514,47 @@
 
         let agora = new Date();
 
-        if (!dados.assinaturaAtiva && !dados.primeiroAcesso) {
-            bloqueado = true;
-            if(statusEl) statusEl.innerHTML = `❌ Período de Teste Expirado`;
-            if(menuTextoEl) menuTextoEl.innerHTML = `❌ Teste Expirado`;
-        } 
-        else if (!dados.assinaturaAtiva) {
-            let dataPrimeiroAcesso = new Date(dados.primeiroAcesso);
-            let diffMilissegundos = agora - dataPrimeiroAcesso;
-            let diasPassados = Math.floor(diffMilissegundos / (1000 * 60 * 60 * 24));
-            
-            diasRestantes = isNaN(diasPassados) ? 0 : Math.max(0, 3 - diasPassados);
-            
-            if(statusEl) statusEl.innerHTML = `⏳ Teste Grátis: Restam <b>${diasRestantes} dia(s)</b>`;
-            if(menuTextoEl) menuTextoEl.innerHTML = `⏳ Teste Grátis (${diasRestantes} dias restantes)`;
-            
-            if (diasRestantes <= 0 || isNaN(diasPassados)) {
-                bloqueado = true;
-            }
-        } else {
+        if (dados.assinaturaAtiva) {
             if (dados.dataExpiracao) {
                 let dataExp = new Date(dados.dataExpiracao);
                 let diffExp = dataExp - agora;
                 diasRestantes = Math.ceil(diffExp / (1000 * 60 * 60 * 24));
                 if (diasRestantes < 0) diasRestantes = 0;
-                
-                if(statusEl) statusEl.innerHTML = `✅ Plano Ativo (${diasRestantes} dias restantes)`;
-                if(menuTextoEl) menuTextoEl.innerHTML = `✅ Plano Ativo (${diasRestantes} dias)`;
+
+                if (diasRestantes <= 0) {
+                    bloqueado = true;
+                    if(statusEl) statusEl.innerHTML = `❌ Assinatura Expirada`;
+                    if(menuTextoEl) menuTextoEl.innerHTML = `❌ Assinatura Expirada`;
+                } else {
+                    if(statusEl) statusEl.innerHTML = `✅ Plano Ativo (${diasRestantes} dias restantes)`;
+                    if(menuTextoEl) menuTextoEl.innerHTML = `✅ Plano Ativo (${diasRestantes} dias)`;
+                }
             } else {
                 if(statusEl) statusEl.innerHTML = `✅ Plano Ativo`;
                 if(menuTextoEl) menuTextoEl.innerHTML = `✅ Plano Ativo`;
             }
+        } else if (dados.primeiroAcesso) {
+            let dataCriacao = new Date(dados.primeiroAcesso);
+            let diffTempo = agora - dataCriacao;
+            let diasDecorridos = Math.floor(diffTempo / (1000 * 60 * 60 * 24));
+            diasRestantes = 3 - diasDecorridos;
+
+            if (diasRestantes <= 0) {
+                bloqueado = true;
+                if(statusEl) statusEl.innerHTML = `❌ Teste Grátis Expirado`;
+                if(menuTextoEl) menuTextoEl.innerHTML = `❌ Teste Expirado`;
+            } else {
+                if(statusEl) statusEl.innerHTML = `🎁 Período de Teste (${diasRestantes} dias restantes)`;
+                if(menuTextoEl) menuTextoEl.innerHTML = `🎁 Teste Grátis (${diasRestantes} dias)`;
+            }
+        } else {
+            bloqueado = true;
         }
 
+        contaBloqueadaGlobal = bloqueado;
         if (bloqueado) {
-            contaBloqueadaGlobal = true;
             if(telaBloqueio) telaBloqueio.style.display = 'flex';
         } else {
-            contaBloqueadaGlobal = false;
             if(telaBloqueio) telaBloqueio.style.display = 'none';
         }
     }
