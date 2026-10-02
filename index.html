@@ -1118,6 +1118,25 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
 <script>
+    // Função para alternar entre abas do aplicativo
+    function mudarTab(idTab) {
+        const abas = ['diario', 'semana', 'mensal', 'config', 'manutencaoCarro', 'historico', 'planos'];
+        abas.forEach(tab => {
+            const elemento = document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+            if (elemento) elemento.style.display = 'none';
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+        const abaAlvo = document.getElementById('tab' + idTab.charAt(0).toUpperCase() + idTab.slice(1));
+        if (abaAlvo) {
+            abaAlvo.style.display = 'block';
+        }
+
+        let dropdown = document.getElementById('menuDropdown');
+        if (dropdown) dropdown.classList.remove('show');
+    }
+
     const firebaseConfig = {
         apiKey: "AIzaSyBpzj4ImWeE2c2yZ-SdNNxd5Qfhv28ATg8",
         authDomain: "calculadora-do-motorista-554ce.firebaseapp.com",
