@@ -6,791 +6,1078 @@
     <title>Calculadora do Motorista</title>
     <style>
         :root {
-            --primary-color: #00e676;
             --bg-color: #121212;
             --card-bg: #1e1e1e;
-            --text-color: #ffffff;
-            --text-muted: #aaaaaa;
+            --text-color: #e0e0e0;
+            --primary-color: #00e676;
+            --border-color: #333;
+            --input-bg: #2a2a2a;
             --danger-color: #ff5252;
-            --edit-color: #ff9800;
+            --edit-color: #ffb74d;
+            --reserve-color: #29b6f6;
+            --uber-purple: #b388ff;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: #121212;
+            color: #e0e0e0;
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            font-family: system-ui, -apple-system, sans-serif;
         }
         .container {
-            width: 100%;
-            max-width: 480px;
+            max-width: 500px;
+            margin: 0 auto;
             background: var(--card-bg);
-            padding: 20px;
-            box-sizing: border-box;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            margin: 10px;
-        }
-        h2, h3 {
-            color: var(--primary-color);
-            text-align: center;
-        }
-        .section-title {
-            font-size: 1.1rem;
-            margin: 15px 0 10px 0;
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
-            color: var(--primary-color);
-        }
-        .form-group {
-            margin-bottom: 12px;
-        }
-        label {
-            display: block;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-        }
-        input, select {
-            width: 100%;
-            padding: 10px;
-            background: #2a2a2a;
-            border: 1px solid #444;
-            color: var(--text-color);
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 0.95rem;
-        }
-        .btn-primary {
-            width: 100%;
             padding: 12px;
-            background: var(--primary-color);
-            color: #000;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: opacity 0.2s;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            position: relative;
         }
-        .btn-primary:hover {
-            opacity: 0.9;
-        }
-        .btn-secondary {
-            background: #444;
-            color: #fff;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.85rem;
-        }
-        .nav-tabs {
+        .header-top {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 15px;
-            background: #181818;
-            padding: 5px;
+            align-items: center;
+            position: relative;
+            margin-bottom: 8px;
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            margin: 4px 0;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            flex: 1;
+        }
+        .plan-btn-style {
+            background: var(--input-bg);
+            color: var(--primary-color);
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+        .menu-dropdown {
+            display: none;
+            position: absolute;
+            left: 0;
+            top: 40px;
+            background: #222;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            z-index: 100;
+            width: 260px;
+            padding: 8px;
+        }
+        .menu-dropdown.show {
+            display: block;
+        }
+        .menu-dropdown button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            width: 100%;
+            text-align: left;
+            padding: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .menu-dropdown button:hover {
+            background: var(--input-bg);
+            color: var(--primary-color);
+        }
+        .tabs {
+            display: flex;
+            justify-content: flex-start;
+            gap: 6px;
+            margin-bottom: 12px;
+            background: var(--input-bg);
+            padding: 4px;
             border-radius: 8px;
             overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .tabs::-webkit-scrollbar {
+            display: none;
         }
         .tab-btn {
             background: none;
             border: none;
-            color: var(--text-muted);
+            color: var(--text-color);
             padding: 8px 12px;
             cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: bold;
             border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.85rem;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         .tab-btn.active {
             background: var(--primary-color);
-            color: #000;
+            color: #121212;
         }
-        .resumo-card {
-            background: #252525;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 15px;
-            text-align: center;
+        .form-group {
+            margin-bottom: 10px;
         }
-        .resumo-valor {
-            font-size: 1.6rem;
+        label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 3px;
+            color: #ccc;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 6px;
+            font-size: 1.05rem;
+            box-sizing: border-box;
+        }
+        .cronometro-box {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .cronometro-box input {
+            flex: 1;
+            background: #181818;
             font-weight: bold;
             color: var(--primary-color);
         }
-        .historico-item {
-            background: #252525;
-            padding: 10px;
+        .btn-chrono {
+            padding: 10px 15px;
+            border: none;
             border-radius: 6px;
-            margin-bottom: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn-start { background: #00e676; color: #121212; }
+        .btn-stop { background: var(--danger-color); color: #fff; }
+        .results {
+            margin-top: 15px;
+            background: #181818;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .results h3 {
+            margin: 0 0 10px 0;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            text-align: center;
+        }
+        .result-item {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            margin-bottom: 8px;
+            font-size: 1rem;
         }
-        .btn-sm {
-            padding: 5px 10px;
-            font-size: 0.75rem;
-            border-radius: 4px;
+        .result-item span:last-child {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        .sobra-livre-box {
+            background: rgba(0, 230, 118, 0.12);
+            border: 2px dashed var(--primary-color);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .sobra-livre-val {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        .btn-action {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary-color);
+            color: #121212;
             border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1.1rem;
             cursor: pointer;
+            margin-top: 10px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+            box-sizing: border-box;
         }
-        .btn-edit { background: var(--edit-color); color: #000; font-weight: bold; }
-        .btn-delete { background: var(--danger-color); color: #fff; font-weight: bold; }
+        .section-title {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            margin-top: 10px;
+            margin-bottom: 8px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+        .mensal-hero {
+            background: linear-gradient(135deg, #181818, #222222);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 10px;
+            text-align: center;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .mes-seletor-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #282828;
+            border: 1px solid var(--primary-color);
+            border-radius: 20px;
+            padding: 4px 12px;
+            margin-bottom: 10px;
+        }
+        .mes-seletor-container input[type="month"] {
+            background: transparent;
+            border: none;
+            color: var(--primary-color);
+            font-size: 0.95rem;
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer;
+            outline: none;
+            padding: 4px;
+        }
+        .mensal-hero-label {
+            font-size: 0.75rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+        .mensal-hero-value {
+            font-size: 2.1rem;
+            font-weight: bold;
+            color: #fff;
+            margin: 4px 0 10px 0;
+        }
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 4px;
-            margin-top: 10px;
+            margin-top: 8px;
+            background: #141414;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .calendar-header-day {
+            font-size: 0.7rem;
+            color: var(--primary-color);
+            font-weight: bold;
+            text-align: center;
+            padding-bottom: 4px;
         }
         .calendar-day-cell {
-            background: #2a2a2a;
-            border-radius: 4px;
-            padding: 6px 2px;
-            text-align: center;
-            font-size: 0.75rem;
-            cursor: pointer;
-            min-height: 40px;
+            background: #222;
+            border-radius: 6px;
+            min-height: 48px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            padding: 4px;
+            cursor: pointer;
+            border: 1px solid #2c2c2c;
         }
         .calendar-day-cell.worked {
-            background: #1b5e20;
-            border: 1px solid var(--primary-color);
+            background: rgba(179, 136, 255, 0.15);
+            border-color: var(--uber-purple);
         }
-        .cal-day-num { font-weight: bold; }
-        .cal-day-val { font-size: 0.65rem; color: #b9f6ca; }
-        
-        /* Estilos de Login e Bloqueio */
-        #telaLogin, #telaBloqueio {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-color);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .login-card {
-            width: 100%;
-            max-width: 400px;
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            text-align: center;
-        }
-        .btn-google {
-            background: #fff;
-            color: #000;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
+        .cal-day-num {
+            font-size: 0.65rem;
+            color: #aaa;
             font-weight: bold;
-            width: 100%;
-            cursor: pointer;
-            margin-top: 15px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-        }
-        .card-plano {
-            background: #2a2a2a;
-            border: 1px solid #444;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            text-align: center;
-        }
-        .dropdown-menu {
-            position: absolute;
-            right: 20px;
-            top: 60px;
-            background: var(--card-bg);
-            border: 1px solid #444;
-            border-radius: 8px;
-            display: none;
-            flex-direction: column;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            z-index: 1000;
-            min-width: 200px;
-        }
-        .dropdown-menu.show { display: flex; }
-        .dropdown-item {
-            padding: 10px 15px;
             text-align: left;
-            background: none;
-            border: none;
-            color: var(--text-color);
-            cursor: pointer;
-            font-size: 0.9rem;
-            border-bottom: 1px solid #333;
         }
-        .dropdown-item:hover { background: #333; }
+        .calendar-day-cell.worked .cal-day-num {
+            color: #fff;
+        }
+        .cal-day-val {
+            font-size: 0.6rem;
+            font-weight: bold;
+            color: var(--uber-purple);
+            text-align: center;
+            margin-bottom: 2px;
+        }
+        .mensal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .mensal-mini-card {
+            background: #181818;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--primary-color);
+            text-align: left;
+        }
+        .mensal-mini-card.km { border-left-color: #00bcd4; }
+        .mensal-mini-card.vkm { border-left-color: #ab47bc; }
+        .mensal-mini-card.vhr { border-left-color: #ffeb3b; }
+        .mensal-mini-card.ipva { border-left-color: #2196F3; }
+        .mensal-mini-card.manut { border-left-color: #FF9800; }
+        .mensal-mini-card.caix { border-left-color: #E91E63; }
+        .mensal-mini-card.gasolina { border-left-color: #ff5722; }
+        .mensal-mini-card.custos-fixos { border-left-color: var(--edit-color); }
+        .mensal-mini-card.manutencao-total { border-left-color: var(--danger-color); }
+
+        .mensal-mini-card span {
+            font-size: 0.75rem;
+            color: #bbb;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .mensal-mini-card h4 {
+            margin: 0;
+            font-size: 1.15rem;
+            color: #fff;
+        }
+        .mensal-footer-stats {
+            background: #181818;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 15px;
+        }
+        .btn-sm {
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-edit { background: var(--edit-color); color: #121212; }
+        .btn-delete { background: var(--danger-color); color: #fff; }
+        .historico-item {
+            background: #181818;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sub-box {
+            background: #222;
+            border: 1px solid #333;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        .sub-title {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 6px;
+        }
+        .pricing-card {
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            background: #181818;
+        }
+        .pricing-card.popular {
+            border-color: var(--primary-color);
+            background: rgba(0, 230, 118, 0.03);
+        }
+        .price {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 6px 0;
+        }
+        .price span {
+            font-size: 13px;
+            font-weight: normal;
+            color: #aaa;
+        }
+        .subscription-badge {
+            background: linear-gradient(135deg, #2a2a2a, #1f1f1f);
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            text-align: left;
+        }
     </style>
 </head>
 <body>
 
-    <!-- TELA DE LOGIN (Oculta se logado) -->
-    <div id="telaLogin" style="display: none;">
-        <div class="login-card">
-            <h2>Calculadora do Motorista</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Faça login para gerenciar seus ganhos e manutenções.</p>
-            <div class="form-group" style="text-align: left;">
-                <label>E-mail</label>
-                <input type="email" id="loginEmail" placeholder="seu@email.com">
-            </div>
-            <div class="form-group" style="text-align: left;">
-                <label>Senha</label>
-                <input type="password" id="loginSenha" placeholder="Sua senha">
-            </div>
-            <button class="btn-primary" onclick="fazerLoginEmailSenha()">Entrar com E-mail</button>
-            <button class="btn-secondary" style="width: 100%; margin-top: 8px;" onclick="fazerCadastroEmailSenha()">Criar Conta com E-mail</button>
-            <button class="btn-google" id="btnLogin">
-                Continuar com Google
+<!-- TELA DE LOGIN / AUTENTICAÇÃO -->
+<div id="telaLogin" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 10000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+    <div style="background: var(--card-bg); border: 2px solid var(--primary-color); padding: 25px; border-radius: 12px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.8);">
+        <h2 style="color: var(--primary-color); margin-top: 0; margin-bottom: 6px;">Calculadora do Motorista</h2>
+        <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;">Faça login ou cadastre-se para acessar</p>
+        
+        <div class="form-group" style="text-align: left;">
+            <label>E-mail</label>
+            <input type="email" id="loginEmail" placeholder="seu@email.com">
+        </div>
+        
+        <div class="form-group" style="text-align: left; margin-bottom: 4px;">
+            <label>Senha</label>
+            <input type="password" id="loginSenha" placeholder="********">
+        </div>
+        
+        <div style="text-align: right; margin-bottom: 12px;">
+            <a href="#" onclick="abrirModalEsqueciSenha()" style="color: var(--primary-color); font-size: 0.8rem; text-decoration: none;">Esqueci minha senha</a>
+        </div>
+
+        <button class="btn-action" onclick="fazerLoginEmailSenha()" style="margin-top: 5px;">Entrar na Conta</button>
+        <button class="btn-action" onclick="fazerCadastroEmailSenha()" style="margin-top: 8px; background: var(--input-bg); color: #fff;">Criar Nova Conta</button>
+        
+        <div style="margin: 15px 0; border-top: 1px solid var(--border-color); position: relative;">
+            <span style="background: var(--card-bg); padding: 0 10px; color: #777; font-size: 0.8rem; position: relative; top: -10px;">ou</span>
+        </div>
+
+        <div class="auth-buttons-container" style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+            <button id="btnLogin" class="btn-auth btn-login" style="flex: 1; padding: 12px; background-color: #4285F4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem;">
+                Entrar com o Google
             </button>
-            <div style="margin-top: 15px;">
-                <a href="#" onclick="abrirModalEsqueciSenha()" style="color: var(--primary-color); font-size: 0.85rem; text-decoration: none;">Esqueci minha senha</a>
-            </div>
+            <button id="btnRegister" class="btn-auth btn-register" style="flex: 1; padding: 12px; background-color: #34A853; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem;">
+                Criar Conta com o Google
+            </button>
         </div>
     </div>
+</div>
 
-    <!-- TELA DE BLOQUEIO DE ASSINATURA -->
-    <div id="telaBloqueio" style="display: none;">
-        <div class="login-card">
-            <h2>Acesso Expirado</h2>
-            <p id="statusPlanoDias" style="color: var(--danger-color); font-size: 0.95rem; margin-bottom: 15px;">Seu período de teste ou assinatura terminou.</p>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">Escolha um plano abaixo para continuar usando a Calculadora do Motorista com acesso total:</p>
-            
-            <div class="card-plano">
-                <h3>Plano Semanal</h3>
-                <p style="font-size: 0.8rem; color: #aaa;">Acesso completo por 7 dias</p>
-                <button class="btn-primary" onclick="assinar('https://checkout.infinitepay.io/paulovictorrx7/fbNCOgRIWO')">Assinar Semanal</button>
-            </div>
-            
-            <div class="card-plano">
-                <h3>Plano Mensal</h3>
-                <p style="font-size: 0.8rem; color: #aaa;">Acesso completo por 30 dias</p>
-                <button class="btn-primary" onclick="assinar('https://checkout.infinitepay.io/paulovictorrx7/YkCsCHJ0zO')">Assinar Mensal</button>
-            </div>
-
-            <div class="card-plano">
-                <h3>Plano Anual</h3>
-                <p style="font-size: 0.8rem; color: #aaa;">Acesso completo por 1 ano</p>
-                <button class="btn-primary" onclick="assinar('https://checkout.infinitepay.io/paulovictorrx7/jV4n2OIU4N')">Assinar Anual</button>
-            </div>
-            
-            <button class="btn-secondary" style="width: 100%; margin-top: 10px;" onclick="sairDaConta()">Sair da Conta</button>
+<!-- MODAL PARA RECUPERAÇÃO DE SENHA -->
+<div id="modalEsqueciSenha" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10001; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+    <div style="background: var(--card-bg); border: 2px solid var(--reserve-color); padding: 20px; border-radius: 12px; text-align: center; max-width: 350px; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.8);">
+        <h3 style="color: var(--reserve-color); margin-top: 0;">Redefinir Senha</h3>
+        <p style="color: #ccc; font-size: 0.85rem; margin-bottom: 15px;">Digite seu e-mail cadastrado para receber o link de redefinição de senha:</p>
+        
+        <div class="form-group" style="text-align: left;">
+            <label>E-mail de Recuperação</label>
+            <input type="email" id="emailRecuperacao" placeholder="seu@email.com">
         </div>
+        
+        <button class="btn-action" onclick="enviarEmailRecuperacao()" style="background: var(--reserve-color); color: #121212; margin-top: 10px;">Enviar E-mail</button>
+        <button class="btn-action" onclick="fecharModalEsqueciSenha()" style="background: var(--input-bg); color: #fff; margin-top: 8px;">Cancelar</button>
+    </div>
+</div>
+
+<!-- TELA DE BLOQUEIO / ASSINATURA OBRIGATÓRIA -->
+<div id="telaBloqueio" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(18,18,18,0.98); z-index: 9999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+    <div style="background: var(--card-bg); border: 2px solid var(--danger-color); padding: 25px; border-radius: 12px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.8);">
+        <h2 style="color: var(--danger-color); margin-top: 0;">Acesso Bloqueado</h2>
+        <p style="color: #ccc; font-size: 0.95rem; margin-bottom: 20px;">
+            Seu período gratuito acabou ou sua assinatura expirou. Para continuar utilizando a Calculadora do Motorista e ter controle total dos seus ganhos, escolha um plano abaixo:
+        </p>
+        <button class="btn-action" onclick="mudarTab('planos'); document.getElementById('telaBloqueio').style.display = 'none';" style="margin-bottom: 10px;">Ver Planos e Assinar</button>
+        <button class="btn-action" onclick="sairDaConta()" style="background: var(--input-bg); color: #fff;">Sair da Conta</button>
+    </div>
+</div>
+
+<div class="container" id="containerPrincipal" style="display: none;">
+    <div class="header-top">
+        <div style="position: relative;">
+            <button class="menu-dots-btn plan-btn-style" onclick="toggleMenuDropdown()" style="padding: 6px 10px; margin: 0;">☰</button>
+            <div id="menuDropdown" class="menu-dropdown">
+                <div id="menuStatusAssinatura" class="subscription-badge">
+                    <span style="font-size: 0.7rem; color: #aaa; display: block; margin-bottom: 2px;">CONTA CONECTADA:</span>
+                    <span id="menuEmailUsuario" style="font-size: 0.8rem; font-weight: bold; color: var(--reserve-color); display: block; margin-bottom: 6px; word-break: break-all;">-</span>
+                    <span style="font-size: 0.7rem; color: #aaa; display: block; margin-bottom: 2px;">STATUS DO PLANO:</span>
+                    <span id="menuStatusTexto" style="font-size: 0.85rem; font-weight: bold; color: var(--primary-color);">Verificando...</span>
+                </div>
+                <button onclick="mudarTab('manutencaoCarro'); toggleMenuDropdown();">🔧 Manutenção do Carro</button>
+                <button onclick="mudarTab('planos'); toggleMenuDropdown();">💎 Planos / Assinatura</button>
+                <button onclick="sairDaConta()" style="color: var(--danger-color); border-top: 1px solid var(--border-color); margin-top: 4px; padding-top: 8px;">🚪 Sair da Conta</button>
+            </div>
+        </div>
+        <h1>Calculadora do Motorista</h1>
+        <div style="width: 36px;"></div>
     </div>
 
-    <!-- MODAL ESQUECI A SENHA -->
-    <div id="modalEsqueciSenha" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center;">
-        <div class="login-card" style="max-width: 350px;">
-            <h3>Recuperar Senha</h3>
-            <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 15px;">Digite seu e-mail para receber o link de redefinição.</p>
-            <div class="form-group" style="text-align: left;">
-                <label>E-mail cadastrado</label>
-                <input type="email" id="emailRecuperacao" placeholder="seu@email.com">
-            </div>
-            <button class="btn-primary" onclick="enviarEmailRecuperacao()">Enviar E-mail</button>
-            <button class="btn-secondary" style="width: 100%; margin-top: 8px;" onclick="fecharModalEsqueciSenha()">Cancelar</button>
-        </div>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="mudarTab('diario')">Diário</button>
+        <button class="tab-btn" onclick="mudarTab('semana')">Semanal</button>
+        <button class="tab-btn" onclick="mudarTab('mensal')">Mensal</button>
+        <button class="tab-btn" onclick="mudarTab('config')">Custos</button>
+        <button class="tab-btn" onclick="mudarTab('manutencaoCarro')">Manutenção</button>
+        <button class="tab-btn" onclick="mudarTab('historico')">Histórico</button>
     </div>
 
-    <!-- APLICATIVO PRINCIPAL -->
-    <div class="container" id="containerPrincipal" style="display: none; position: relative;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h2 style="margin: 0;">Calculadora do Motorista</h2>
-            <button onclick="toggleMenuDropdown()" class="btn-secondary" style="padding: 6px 10px; font-size: 1.1rem;">⚙️</button>
+    <!-- ABA DIÁRIA -->
+    <div id="tabDiario">
+        <div class="form-group">
+            <label>Data</label>
+            <input type="date" id="dataRegistro" onchange="atualizarDiaSemanaPorData('dataRegistro', 'diaSemana')">
         </div>
 
-        <!-- Menu Dropdown do Usuário -->
-        <div id="menuDropdown" class="dropdown-menu">
-            <div id="menuEmailUsuario" style="padding: 10px 15px; font-size: 0.75rem; color: var(--text-muted); border-bottom: 1px solid #333; word-break: break-all;"></div>
-            <div id="menuStatusTexto" style="padding: 10px 15px; font-size: 0.8rem; color: var(--primary-color); border-bottom: 1px solid #333;"></div>
-            <button class="dropdown-item" onclick="mudarTab('planos'); toggleMenuDropdown();">💎 Planos e Assinatura</button>
-            <button class="dropdown-item" onclick="sairDaConta(); toggleMenuDropdown();" style="color: var(--danger-color);">🚪 Sair da Conta</button>
+        <div class="form-group">
+            <label>Dia da Semana</label>
+            <select id="diaSemana">
+                <option value="Segunda-feira">Segunda-feira</option>
+                <option value="Terça-feira">Terça-feira</option>
+                <option value="Quarta-feira">Quarta-feira</option>
+                <option value="Quinta-feira">Quinta-feira</option>
+                <option value="Sexta-feira">Sexta-feira</option>
+                <option value="Sábado">Sábado</option>
+                <option value="Domingo">Domingo</option>
+            </select>
         </div>
 
-        <!-- Abas de Navegação -->
-        <div class="nav-tabs">
-            <button class="tab-btn active" onclick="mudarTab('diario')">Diário</button>
-            <button class="tab-btn" onclick="mudarTab('semana')">Semanal</button>
-            <button class="tab-btn" onclick="mudarTab('mensal')">Mensal</button>
-            <button class="tab-btn" onclick="mudarTab('manutencaoCarro')">Manutenção</button>
-            <button class="tab-btn" onclick="mudarTab('historico')">Histórico</button>
-            <button class="tab-btn" onclick="mudarTab('config')">Ajustes</button>
-            <button class="tab-btn" onclick="mudarTab('planos')">Planos</button>
+        <div class="form-group">
+            <label>Faturamento Bruto (R$)</label>
+            <input type="number" step="0.01" id="bruto" placeholder="0.00" oninput="calcular()">
         </div>
 
-        <!-- ABA DIÁRIO -->
-        <div id="tabDiario">
-            <input type="hidden" id="editIndex" value="">
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex:1;">
+                <label>KM Inicial</label>
+                <input type="number" step="1" id="kmInicial" placeholder="0" oninput="calcular()">
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label>KM Final</label>
+                <input type="number" step="1" id="kmFinal" placeholder="0" oninput="calcular()">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Horas Online</label>
+            <div class="cronometro-box">
+                <input type="text" id="horasOnline" value="0.00" oninput="calcular()">
+                <button type="button" id="btnChrono" class="btn-chrono btn-start" onclick="toggleCronometro()">Iniciar</button>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex:1;">
+                <label>Média do Carro (KM/L)</label>
+                <input type="number" step="0.1" id="mediaKmLitro" value="10" oninput="calcular()">
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label>Preço do Litro (R$)</label>
+                <input type="number" step="0.01" id="precoLitro" value="4.09" oninput="calcularCombustivelPorLitros()">
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex:1;">
+                <label>Litros Abastecidos</label>
+                <input type="number" step="0.01" id="litros" placeholder="0" oninput="calcularCombustivelPorLitros()">
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label>Valor Abastecido (R$)</label>
+                <input type="number" step="0.01" id="valorAbastecido" placeholder="0.00" oninput="calcular()">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Gastos na Rua (Alimentação, etc.)</label>
+            <input type="number" step="0.01" id="gastosRua" placeholder="0.00" oninput="calcular()">
+        </div>
+
+        <div style="background: #181818; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <div style="font-size: 0.9rem; color: var(--edit-color); font-weight: bold;">Custo Fixo Automático do Dia</div>
+                <button type="button" class="btn-sm btn-edit" onclick="mudarTab('config')">Alterar Mensal</button>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1; margin-bottom:0;">
+                    <label style="font-size:0.8rem;">Parcela Proporcional</label>
+                    <input type="number" id="parcelaCarro" readonly style="color: var(--edit-color); font-weight:bold;">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom:0;">
+                    <label style="font-size:0.8rem;">Seguro Proporcional</label>
+                    <input type="number" id="seguroCarro" readonly style="color: var(--edit-color); font-weight:bold;">
+                </div>
+            </div>
+        </div>
+
+        <div style="background: #181818; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 10px;">
+            <div style="font-size: 0.9rem; color: var(--reserve-color); font-weight: bold; margin-bottom: 8px; text-align: center;">Reservas Separadas por Ocasião</div>
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1; margin-bottom:0;">
+                    <label style="font-size:0.8rem;">Reserva IPVA (R$)</label>
+                    <input type="number" step="0.01" id="reservaIpva" placeholder="0.00" value="10.00" oninput="calcular()">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom:0;">
+                    <label style="font-size:0.8rem;">Reserva Manut. (R$)</label>
+                    <input type="number" step="0.01" id="reservaManutencao" placeholder="0.00" value="15.00" oninput="calcular()">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom:0;">
+                    <label style="font-size:0.8rem;">Caixinha (R$)</label>
+                    <input type="number" step="0.01" id="reservaCaixinha" placeholder="0.00" value="10.00" oninput="calcular()">
+                </div>
+            </div>
+        </div>
+
+        <div class="results">
+            <h3>Resumo do Dia</h3>
+            <div class="result-item"><span>KM Rodados:</span> <span id="resKm">0 km</span></div>
+            <div class="result-item"><span>Gasto Combustível:</span> <span id="resCombustivel">R$ 0,00</span></div>
+            <div class="result-item"><span>Custos Fixos do Dia:</span> <span id="resCustosFixos">R$ 0,00</span></div>
+            <div class="result-item"><span>Gastos na Rua:</span> <span id="resGastosRua">R$ 0,00</span></div>
+            <div class="result-item"><span>Média por Hora:</span> <span id="resPorHora">R$ 0,00 /h</span></div>
+            <div class="result-item"><span>Faturamento por KM:</span> <span id="resPorKm">R$ 0,00 /km</span></div>
             
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Data do Registro</label>
-                    <input type="date" id="dataRegistro" onchange="atualizarDiaSemanaPorData('dataRegistro', 'diaSemana')">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Dia da Semana</label>
-                    <select id="diaSemana">
-                        <option value="Segunda-feira">Segunda-feira</option>
-                        <option value="Terça-feira">Terça-feira</option>
-                        <option value="Quarta-feira">Quarta-feira</option>
-                        <option value="Quinta-feira">Quinta-feira</option>
-                        <option value="Sexta-feira">Sexta-feira</option>
-                        <option value="Sábado">Sábado</option>
-                        <option value="Domingo">Domingo</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Faturamento Bruto (R$)</label>
-                <input type="number" id="bruto" step="0.01" placeholder="0,00" oninput="calcular()">
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>KM Inicial</label>
-                    <input type="number" id="kmInicial" placeholder="0" oninput="calcular()">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>KM Final</label>
-                    <input type="number" id="kmFinal" placeholder="0" oninput="calcular()">
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Litros Abastecidos</label>
-                    <input type="number" id="litros" step="0.01" placeholder="0" oninput="calcularCombustivelPorLitros()">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Preço do Litro (R$)</label>
-                    <input type="number" id="precoLitro" step="0.01" value="4.09" oninput="calcular()">
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Valor Abastecido (R$)</label>
-                    <input type="number" id="valorAbastecido" step="0.01" placeholder="0,00" oninput="calcular()">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Média KM/L</label>
-                    <input type="number" id="mediaKmLitro" step="0.1" value="10" oninput="calcular()">
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Gastos na Rua (Almoço, Água...)</label>
-                    <input type="number" id="gastosRua" step="0.01" placeholder="0,00" oninput="calcular()">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Horas Online</label>
-                    <div style="display: flex; gap: 5px;">
-                        <input type="number" id="horasOnline" step="0.1" placeholder="0" oninput="calcular()" style="flex: 1;">
-                        <button type="button" id="btnChrono" class="btn-secondary" onclick="toggleCronometro()" style="padding: 0 10px;">Iniciar</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section-title">Custos e Reservas Automáticas</div>
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Parcela do Carro (Dia)</label>
-                    <input type="number" id="parcelaCarro" step="0.01" readonly style="background: #222; color: #aaa;">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Seguro (Dia)</label>
-                    <input type="number" id="seguroCarro" step="0.01" readonly style="background: #222; color: #aaa;">
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 5px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Reserva IPVA</label>
-                    <input type="number" id="reservaIpva" step="0.01" value="10.00" oninput="calcular()">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Reserva Manutenção</label>
-                    <input type="number" id="reservaManutencao" step="0.01" value="15.00" oninput="calcular()">
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Caixinha / Imprevisto</label>
-                    <input type="number" id="reservaCaixinha" step="0.01" value="10.00" oninput="calcular()">
-                </div>
-            </div>
-
-            <div class="resumo-card">
-                <div style="font-size: 0.85rem; color: var(--text-muted);">LUCRO LÍQUIDO DO DIA</div>
-                <div class="resumo-valor" id="resLiquido">R$ 0,00</div>
-                <div style="display: flex; justify-content: space-around; margin-top: 10px; font-size: 0.8rem; color: #ccc;">
-                    <div>KM Rodados: <span id="resKm" style="color:#fff; font-weight:bold;">0 km</span></div>
-                    <div>Combustível: <span id="resCombustivel" style="color:#fff; font-weight:bold;">R$ 0,00</span></div>
-                </div>
-                <div style="display: flex; justify-content: space-around; margin-top: 5px; font-size: 0.8rem; color: #ccc;">
-                    <div>Custos Fixos: <span id="resCustosFixos" style="color:#fff; font-weight:bold;">R$ 0,00</span></div>
-                    <div>Gastos Rua: <span id="resGastosRua" style="color:#fff; font-weight:bold;">R$ 0,00</span></div>
-                </div>
-                <div style="display: flex; justify-content: space-around; margin-top: 5px; font-size: 0.8rem; color: #ffeb3b;">
-                    <div>Ganho/Hora: <span id="resPorHora">R$ 0,00 /h</span></div>
-                    <div>Ganho/KM: <span id="resPorKm">R$ 0,00 /km</span></div>
-                </div>
-            </div>
-
-            <button class="btn-primary" id="btnSalvar" onclick="salvarDia()">Salvar Dia no Histórico</button>
-        </div>
-
-        <!-- ABA SEMANAL -->
-        <div id="tabSemana" style="display: none;">
-            <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>Balanço Semanal</span>
-                <div style="display: flex; gap: 5px;">
-                    <button class="btn-secondary" onclick="mudarSemanaOffset(-1)">◀ Ant</button>
-                    <button class="btn-secondary" onclick="mudarSemanaOffset(1)">Pró ▶</button>
-                </div>
-            </div>
-            <div id="semanaLabelIntervalo" style="text-align: center; font-size: 0.85rem; color: var(--primary-color); margin-bottom: 10px; font-weight: bold;"></div>
-
-            <div id="semanaBarrinhaDias" class="calendar-grid" style="grid-template-columns: repeat(7, 1fr); margin-bottom: 15px;"></div>
-
-            <div class="resumo-card" style="margin-top: 0;">
-                <div style="font-size: 0.85rem; color: var(--text-muted);">FATURAMENTO BRUTO SEMANAL</div>
-                <div class="resumo-valor" id="semanaBrutoGrande">R$ 0,00</div>
-                <div style="margin-top: 8px; font-size: 1.2rem; color: #b9f6ca;">Líquido: <b id="semanaLiquido">R$ 0,00</b></div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; font-size: 0.8rem; text-align: left; background: #1e1e1e; padding: 8px; border-radius: 6px;">
-                    <div>• KM Total: <span id="semanaKmTotal" style="color:#fff;">0 km</span></div>
-                    <div>• Média/KM: <span id="semanaValorKm" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Média/Hora: <span id="semanaValorHr" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Dias Trab.: <span id="semanaDias" style="color:#fff;">0 dias</span></div>
-                    <div>• Média/Dia: <span id="semanaMediaDia" style="color:#ffeb3b;">R$ 0,00</span></div>
-                    <div>• Combustível: <span id="semanaGasolina" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Custos Fixos: <span id="semanaCustosFixos" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Reserva IPVA: <span id="semanaIpva" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Reserva Manut.: <span id="semanaManutencao" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Caixinha: <span id="semanaCaixinha" style="color:#fff;">R$ 0,00</span></div>
-                    <div style="grid-column: span 2; color: #ff5252; border-top: 1px solid #333; padding-top: 4px; margin-top: 4px;">• Manutenções a Vencer na Semana: <span id="semanaManutencaoPagar" style="font-weight:bold;">R$ 0,00</span></div>
-                </div>
-            </div>
-
-            <!-- Painel de edição rápida de dia na semana -->
-            <div id="painelEdicaoSemanal" style="display: none; background: #252525; padding: 12px; border-radius: 8px; margin-top: 15px; border: 1px solid var(--edit-color);">
-                <input type="hidden" id="editSemanaDataIso">
-                <div id="tituloEdicaoSemanal" style="font-weight: bold; color: var(--edit-color); margin-bottom: 8px; font-size: 0.9rem;"></div>
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Bruto (R$)</label>
-                        <input type="number" id="editSemanaBruto" step="0.01" placeholder="0,00">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Gastos Rua (R$)</label>
-                        <input type="number" id="editSemanaRua" step="0.01" placeholder="0,00">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>KM Inicial</label>
-                        <input type="number" id="editSemanaKmIni" placeholder="0">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>KM Final</label>
-                        <input type="number" id="editSemanaKmFim" placeholder="0">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Litros</label>
-                        <input type="number" id="editSemanaLitros" step="0.01" placeholder="0" oninput="calcularCombustivelEdicaoSemanal()">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Abastecido (R$)</label>
-                        <input type="number" id="editSemanaValorAbast" step="0.01" placeholder="0,00">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Horas Online</label>
-                        <input type="number" id="editSemanaHoras" step="0.1" placeholder="0">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Reserva IPVA</label>
-                        <input type="number" id="editSemanaIpva" step="0.01">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Reserva Manutenção</label>
-                        <input type="number" id="editSemanaManut" step="0.01">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Caixinha</label>
-                        <input type="number" id="editSemanaCaixa" step="0.01">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px; margin-top: 10px;">
-                    <button class="btn-primary" style="margin-top:0; flex: 1;" onclick="salvarEdicaoSemanal()">Salvar Alterações</button>
-                    <button class="btn-secondary" style="background: var(--danger-color); flex: 1;" id="btnExcluirDiaSemana" onclick="excluirDiaSemanal()">Excluir Dia</button>
-                    <button class="btn-secondary" style="flex: 1;" onclick="fecharEdicaoSemanal()">Cancelar</button>
-                </div>
+            <div class="sobra-livre-box">
+                <div style="font-size: 0.8rem; color: #ccc; text-transform: uppercase;">Quanto Sobra Livre Hoje</div>
+                <div class="sobra-livre-val" id="resLiquido">R$ 0,00</div>
             </div>
         </div>
 
-        <!-- ABA MENSAL -->
-        <div id="tabMensal" style="display: none;">
-            <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>Balanço Mensal</span>
-                <input type="month" id="filtroMesAno" style="width: auto; padding: 4px 8px; font-size: 0.85rem;" onchange="renderizarMensal()">
-            </div>
+        <input type="hidden" id="editIndex" value="">
+        <button class="btn-action" id="btnSalvar" onclick="salvarDia()">Salvar Dia no Histórico</button>
+    </div>
 
-            <div class="calendar-grid" id="calendarDaysContainer" style="margin-bottom: 15px;"></div>
-
-            <div class="resumo-card" style="margin-top: 0;">
-                <div style="font-size: 0.85rem; color: var(--text-muted);">FATURAMENTO BRUTO MENSAL</div>
-                <div class="resumo-valor" id="mesBrutoGrande">R$ 0,00</div>
-                <div style="margin-top: 8px; font-size: 1.2rem; color: #b9f6ca;">Líquido: <b id="mesLiquido">R$ 0,00</b></div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; font-size: 0.8rem; text-align: left; background: #1e1e1e; padding: 8px; border-radius: 6px;">
-                    <div>• KM Total: <span id="mesKmTotal" style="color:#fff;">0 km</span></div>
-                    <div>• Média/KM: <span id="mesValorKm" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Média/Hora: <span id="mesValorHr" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Dias Trab.: <span id="mesDias" style="color:#fff;">0 dias</span></div>
-                    <div>• Média/Dia: <span id="mesMediaDia" style="color:#ffeb3b;">R$ 0,00</span></div>
-                    <div>• Combustível: <span id="mesGasolina" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Custos Fixos: <span id="mesCustosFixos" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Reserva IPVA: <span id="mesIpva" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Reserva Manut.: <span id="mesManutencao" style="color:#fff;">R$ 0,00</span></div>
-                    <div>• Caixinha: <span id="mesCaixinha" style="color:#fff;">R$ 0,00</span></div>
-                    <div style="grid-column: span 2; color: #ff5252; border-top: 1px solid #333; padding-top: 4px; margin-top: 4px;">• Manutenções a Vencer no Mês: <span id="mesManutencaoPagar" style="font-weight:bold;">R$ 0,00</span></div>
-                </div>
-            </div>
-
-            <!-- Painel de edição rápida de dia no mês -->
-            <div id="painelEdicaoMensal" style="display: none; background: #252525; padding: 12px; border-radius: 8px; margin-top: 15px; border: 1px solid var(--edit-color);">
-                <input type="hidden" id="editMesDataIso">
-                <div id="tituloEdicaoMensal" style="font-weight: bold; color: var(--edit-color); margin-bottom: 8px; font-size: 0.9rem;"></div>
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Bruto (R$)</label>
-                        <input type="number" id="editMesBruto" step="0.01" placeholder="0,00">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Gastos Rua (R$)</label>
-                        <input type="number" id="editMesRua" step="0.01" placeholder="0,00">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>KM Inicial</label>
-                        <input type="number" id="editMesKmIni" placeholder="0">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>KM Final</label>
-                        <input type="number" id="editMesKmFim" placeholder="0">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Litros</label>
-                        <input type="number" id="editMesLitros" step="0.01" placeholder="0" oninput="calcularCombustivelEdicaoMensal()">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Abastecido (R$)</label>
-                        <input type="number" id="editMesValorAbast" step="0.01" placeholder="0,00">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Horas Online</label>
-                        <input type="number" id="editMesHoras" step="0.1" placeholder="0">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Reserva IPVA</label>
-                        <input type="number" id="editMesIpva" step="0.01">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Reserva Manutenção</label>
-                        <input type="number" id="editMesManut" step="0.01">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 6px;">
-                        <label>Caixinha</label>
-                        <input type="number" id="editMesCaixa" step="0.01">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px; margin-top: 10px;">
-                    <button class="btn-primary" style="margin-top:0; flex: 1;" onclick="salvarEdicaoMensalTab()">Salvar Alterações</button>
-                    <button class="btn-secondary" style="background: var(--danger-color); flex: 1;" id="btnExcluirDiaMensal" onclick="excluirDiaMensalTab()">Excluir Dia</button>
-                    <button class="btn-secondary" style="flex: 1;" onclick="fecharEdicaoMensal()">Cancelar</button>
-                </div>
-            </div>
+    <!-- ABA DE PLANOS / ASSINATURA -->
+    <div id="tabPlanos" style="display: none;">
+        <div class="section-title">Escolha seu Plano de Assinatura</div>
+        
+        <div style="background: linear-gradient(135deg, #222, #181818); border: 2px solid var(--primary-color); padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,230,118,0.15);">
+            <div style="font-size: 0.8rem; color: #aaa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Status Atual da Sua Conta</div>
+            <div id="statusPlanoDias" style="font-size: 1.15rem; font-weight: bold; color: #fff;">Verificando dias restantes...</div>
         </div>
 
-        <!-- ABA MANUTENÇÃO DO CARRO -->
-        <div id="tabManutencaoCarro" style="display: none;">
-            <div class="section-title">Controle de Manutenção do Carro</div>
+        <div class="pricing-card">
+            <h3>Plano Semanal</h3>
+            <p class="price">R$ 9,90 <span>/ semana</span></p>
+            <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">Ideal para testar com flexibilidade total.</p>
+            <a href="https://checkout.infinitepay.io/paulovictorrx7/fbNCOgRIWO" target="_blank" class="btn-action" style="margin-top:0;">Assinar Semanal</a>
+        </div>
+
+        <div class="pricing-card popular" style="margin-top: 12px;">
+            <div style="background: var(--primary-color); color: #121212; font-size: 0.7rem; font-weight: bold; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 6px;">MAIS POPULAR</div>
+            <h3>Plano Mensal</h3>
+            <p class="price">R$ 29,90 <span>/ mês</span></p>
+            <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">Melhor custo-benefício para o dia a dia.</p>
+            <a href="https://checkout.infinitepay.io/paulovictorrx7/YkCsCHJ0zO" target="_blank" class="btn-action" style="margin-top:0;">Assinar Mensal</a>
+        </div>
+
+        <div class="pricing-card" style="margin-top: 12px;">
+            <h3>Plano Anual</h3>
+            <p class="price">R$ 199,90 <span>/ ano</span></p>
+            <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">Economia máxima garantida por 12 meses.</p>
+            <a href="https://checkout.infinitepay.io/paulovictorrx7/jV4n2OIU4N" target="_blank" class="btn-action" style="margin-top:0; background: var(--uber-purple); color: #fff;">Assinar Anual</a>
+        </div>
+
+        <div style="margin-top: 20px; padding: 12px; background: #181818; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; font-size: 0.85rem;">
+            <div style="color: var(--primary-color); font-weight: bold; margin-bottom: 6px;">Precisa de Ajuda? (Suporte)</div>
+            <div style="color: #ccc; margin-bottom: 4px;">📧 E-mail: <b>Vittinho942@gmail.com</b></div>
+            <div style="color: #ccc;">📱 WhatsApp: <b>(61) 99168-1715</b></div>
+        </div>
+
+        <button class="btn-action" style="background: var(--input-bg); color: #fff; margin-top: 15px;" onclick="tentarVoltarAoDiario()">Voltar ao Diário</button>
+    </div>
+
+    <!-- ABA MANUTENÇÃO DO CARRO -->
+    <div id="tabManutencaoCarro" style="display: none;">
+        <div class="section-title">Controle de Manutenção do Carro</div>
+        <div style="font-size: 0.8rem; color: var(--edit-color); text-align: center; margin-bottom: 10px;">
+            Registre o que foi trocado, escolha a data exata do 1º vencimento e controle as parcelas mensais!
+        </div>
+
+        <div class="results" style="text-align: left; padding: 12px; margin-bottom: 12px;">
             <input type="hidden" id="editManutencaoId" value="">
-            
             <div class="form-group">
-                <label>Serviço / Peça Realizada</label>
-                <input type="text" id="manutServico" placeholder="Ex: Troca de óleo, Pastilha de freio...">
+                <label>O que foi mexido / Serviço (Ex: Troca de pastilhas)</label>
+                <input type="text" id="manutServico" placeholder="Ex: Pastilhas de freio">
             </div>
 
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 2;">
-                    <label>Valor da Peça (R$)</label>
-                    <input type="number" id="manutValorPeca" step="0.01" placeholder="0,00">
+            <div class="sub-box">
+                <div class="sub-title">1. Valor da Peça</div>
+                <div style="display: flex; gap: 8px;">
+                    <div class="form-group" style="flex:1;">
+                        <label>Valor (R$)</label>
+                        <input type="number" step="0.01" id="manutValorPeca" placeholder="0.00">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>Forma de Pagamento</label>
+                        <select id="manutFormaPeca" onchange="alternarParcelasPeca()">
+                            <option value="Pix">PIX</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Débito">Débito</option>
+                            <option value="Crédito">Crédito</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Forma Pgto Peça</label>
-                    <select id="manutFormaPeca" onchange="alternarParcelasPeca()">
-                        <option value="Pix">Pix</option>
-                        <option value="Débito">Débito</option>
-                        <option value="Crédito">Crédito</option>
-                        <option value="Dinheiro">Dinheiro</option>
+                <div class="form-group" id="containerVencimentoPeca" style="display: none;">
+                    <label>Data do 1º Vencimento (Peça)</label>
+                    <input type="date" id="manutVencimentoPeca">
+                </div>
+                <div class="form-group" id="containerParcelasPeca" style="display: none;">
+                    <label>Nº de Parcelas (Crédito)</label>
+                    <select id="manutParcelasPeca">
+                        <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
                     </select>
                 </div>
             </div>
 
-            <div id="containerParcelasPeca" class="form-group" style="display: none;">
-                <label>Número de Parcelas (Peça)</label>
-                <select id="manutParcelasPeca">
-                    <option value="2">2x</option>
-                    <option value="3">3x</option>
-                    <option value="4">4x</option>
-                    <option value="5">5x</option>
-                    <option value="6">6x</option>
-                    <option value="10">10x</option>
-                    <option value="12">12x</option>
-                </select>
-            </div>
-
-            <div id="containerVencimentoPeca" class="form-group" style="display: none;">
-                <label>1º Vencimento / Fatura (Peça)</label>
-                <input type="date" id="manutVencimentoPeca">
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 2;">
-                    <label>Valor Mão de Obra (R$)</label>
-                    <input type="number" id="manutMaoObra" step="0.01" placeholder="0,00">
+            <div class="sub-box">
+                <div class="sub-title">2. Valor da Mão de Obra</div>
+                <div style="display: flex; gap: 8px;">
+                    <div class="form-group" style="flex:1;">
+                        <label>Valor (R$)</label>
+                        <input type="number" step="0.01" id="manutMaoObra" placeholder="0.00">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>Forma de Pagamento</label>
+                        <select id="manutFormaObra" onchange="alternarParcelasObra()">
+                            <option value="Pix">PIX</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Débito">Débito</option>
+                            <option value="Crédito">Crédito</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Forma Pgto M. Obra</label>
-                    <select id="manutFormaObra" onchange="alternarParcelasObra()">
-                        <option value="Pix">Pix</option>
-                        <option value="Débito">Débito</option>
-                        <option value="Crédito">Crédito</option>
-                        <option value="Dinheiro">Dinheiro</option>
+                <div class="form-group" id="containerVencimentoObra" style="display: none;">
+                    <label>Data do 1º Vencimento (Mão de Obra)</label>
+                    <input type="date" id="manutVencimentoObra">
+                </div>
+                <div class="form-group" id="containerParcelasObra" style="display: none;">
+                    <label>Nº de Parcelas (Crédito)</label>
+                    <select id="manutParcelasObraSelect">
+                        <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option><option value="11">11x</option><option value="12">12x</option>
                     </select>
                 </div>
             </div>
 
-            <div id="containerParcelasObra" class="form-group" style="display: none;">
-                <label>Número de Parcelas (M. Obra)</label>
-                <select id="manutParcelasObraSelect">
-                    <option value="2">2x</option>
-                    <option value="3">3x</option>
-                    <option value="4">4x</option>
-                    <option value="5">5x</option>
-                    <option value="6">6x</option>
-                    <option value="10">10x</option>
-                    <option value="12">12x</option>
-                </select>
-            </div>
-
-            <div id="containerVencimentoObra" class="form-group" style="display: none;">
-                <label>1º Vencimento / Fatura (M. Obra)</label>
-                <input type="date" id="manutVencimentoObra">
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>KM Atual da Manutenção</label>
-                    <input type="number" id="manutKmFeito" placeholder="Ex: 50000">
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1;">
+                    <label>KM que Fez</label>
+                    <input type="number" step="1" id="manutKmFeito" placeholder="Ex: 50000">
                 </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>KM para Refazer / Trocar</label>
-                    <input type="number" id="manutKmRefazer" placeholder="Ex: 60000">
+                <div class="form-group" style="flex:1;">
+                    <label>KM para Refazer</label>
+                    <input type="number" step="1" id="manutKmRefazer" placeholder="Ex: 60000">
                 </div>
             </div>
 
-            <button class="btn-primary" id="btnSalvarManutencao" onclick="salvarManutencaoCarro()">Adicionar Manutenção</button>
-            <button class="btn-secondary" id="btnCancelarManutencao" style="width: 100%; margin-top: 8px; display: none;" onclick="cancelarEdicaoManutencaoCarro()">Cancelar Edição</button>
-
-            <div class="section-title" style="margin-top: 20px;">Histórico de Manutenções</div>
-            <div id="listaManutencoesCarro" style="max-height: 350px; overflow-y: auto;"></div>
+            <button class="btn-action" id="btnSalvarManutencao" style="margin-top: 5px;" onclick="salvarManutencaoCarro()">Adicionar Manutenção</button>
+            <button class="btn-action" id="btnCancelarManutencao" style="margin-top: 5px; background: var(--input-bg); color: #fff; display: none;" onclick="cancelarEdicaoManutencaoCarro()">Cancelar Edição</button>
         </div>
 
-        <!-- ABA CONFIGURAÇÕES / AJUSTES -->
-        <div id="tabConfig" style="display: none;">
-            <div class="section-title">Ajustes de Custos Fixos</div>
+        <div class="section-title" style="font-size: 1rem; margin-top: 15px;">Histórico de Manutenções</div>
+        <div id="listaManutencoesCarro" style="max-height: 350px; overflow-y: auto;"></div>
+        
+        <button class="btn-action" style="background: var(--input-bg); color: #fff; margin-top: 15px;" onclick="mudarTab('diario')">Voltar ao Diário</button>
+    </div>
+
+    <!-- ABA CONFIGURAÇÃO DE CUSTOS FIXOS MENSAIS -->
+    <div id="tabConfig" style="display: none;">
+        <div class="section-title">Configuração de Custos Fixos Mensais</div>
+        <div class="results" style="text-align: left; padding: 15px;">
             <div class="form-group">
                 <label>Parcela Mensal do Carro (R$)</label>
-                <input type="number" id="cfgParcelaMensal" step="0.01" value="1375" oninput="salvarConfiguracoes()">
+                <input type="number" step="0.01" id="cfgParcelaMensal" value="1375" oninput="salvarConfiguracoes()">
             </div>
             <div class="form-group">
                 <label>Seguro Mensal (R$)</label>
-                <input type="number" id="cfgSeguroMensal" step="0.01" value="0" oninput="salvarConfiguracoes()">
+                <input type="number" step="0.01" id="cfgSeguroMensal" value="0.00" oninput="salvarConfiguracoes()">
             </div>
             <div class="form-group">
-                <label>Dias Trabalhados no Mês (Média)</label>
-                <input type="number" id="cfgDiasMes" value="26" oninput="salvarConfiguracoes()">
+                <label>Dias Trabalhados Esperados no Mês</label>
+                <input type="number" step="1" id="cfgDiasMes" value="26" oninput="salvarConfiguracoes()">
             </div>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">Os valores diários de custos fixos são calculados automaticamente com base nestes parâmetros mensais.</p>
-        </div>
-
-        <!-- ABA PLANOS E ASSINATURA -->
-        <div id="tabPlanos" style="display: none;">
-            <div class="section-title">Planos Disponíveis</div>
-            <p style="font-size: 0.85rem; color: #aaa; text-align: center; margin-bottom: 15px;">Escolha o plano ideal para continuar usando todos os recursos sem interrupções.</p>
-            
-            <div class="card-plano">
-                <h3>Plano Semanal</h3>
-                <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">Acesso completo por 7 dias</p>
-                <button class="btn-primary" onclick="assinar('https://checkout.infinitepay.io/paulovictorrx7/fbNCOgRIWO')">Assinar Semanal</button>
-            </div>
-            
-            <div class="card-plano">
-                <h3>Plano Mensal</h3>
-                <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">Acesso completo por 30 dias</p>
-                <button class="btn-primary" onclick="assinar('https://checkout.infinitepay.io/paulovictorrx7/YkCsCHJ0zO')">Assinar Mensal</button>
-            </div>
-
-            <div class="card-plano">
-                <h3>Plano Anual</h3>
-                <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">Acesso completo por 1 ano</p>
-                <button class="btn-primary" onclick="assinar('https://checkout.infinitepay.io/paulovictorrx7/jV4n2OIU4N')">Assinar Anual</button>
-            </div>
-
-            <button class="btn-secondary" style="width: 100%; margin-top: 10px;" onclick="tentarVoltarAoDiario()">Voltar ao Início</button>
-        </div>
-
-        <!-- ABA HISTÓRICO -->
-        <div id="tabHistorico" style="display: none;">
-            <div class="section-title">Histórico de Lançamentos</div>
-            <div id="painelEdicaoHistorico"></div>
-            <div id="listaHistorico" style="max-height: 450px; overflow-y: auto;"></div>
+            <button class="btn-action" onclick="mudarTab('diario')">Salvar e Voltar ao Diário</button>
         </div>
     </div>
+
+    <!-- ABA SEMANAL -->
+    <div id="tabSemana" style="display: none;">
+        <div class="section-title">Resumo e Finanças Semanais</div>
+        
+        <div class="mensal-hero">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <button class="btn-sm" style="background: transparent; color: var(--primary-color); border: 1px solid var(--border-color);" onclick="mudarSemanaOffset(-1)">◀ Anterior</button>
+                <span id="semanaLabelIntervalo" style="font-weight: bold; font-size: 0.9rem; color: var(--primary-color);">Carregando...</span>
+                <button class="btn-sm" style="background: transparent; color: var(--primary-color); border: 1px solid var(--border-color);" onclick="mudarSemanaOffset(1)">Próxima ▶</button>
+            </div>
+
+            <div class="mensal-hero-label">Faturamento Bruto da Semana</div>
+            <div id="semanaBrutoGrande" class="mensal-hero-value">R$ 0,00</div>
+            
+            <div style="font-size: 0.7rem; color: var(--edit-color); text-align: center; margin-bottom: 4px; font-weight: bold;">
+                Calendário da Semana (Toque em um dia para editar):
+            </div>
+            
+            <div class="calendar-grid" style="grid-template-columns: repeat(7, 1fr); margin-top: 8px;" id="semanaBarrinhaDias">
+            </div>
+        </div>
+
+        <!-- PAINEL DE EDIÇÃO FLUTUANTE NA ABA SEMANAL -->
+        <div id="painelEdicaoSemanal" style="display: none; background: #181818; border: 2px solid var(--edit-color); padding: 14px; border-radius: 10px; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong id="tituloEdicaoSemanal" style="color: var(--edit-color); font-size: 0.95rem;">Editar Dia</strong>
+                <button class="btn-sm btn-delete" onclick="fecharEdicaoSemanal()" style="padding: 2px 8px; font-size: 0.75rem;">✕ Fechar</button>
+            </div>
+            
+            <input type="hidden" id="editSemanaDataIso">
+            
+            <div class="form-group" style="margin-bottom: 8px;">
+                <label style="font-size: 0.8rem;">Faturamento Bruto (R$)</label>
+                <input type="number" step="0.01" id="editSemanaBruto" placeholder="0.00">
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">KM Inicial</label>
+                    <input type="number" step="1" id="editSemanaKmIni" placeholder="0">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">KM Final</label>
+                    <input type="number" step="1" id="editSemanaKmFim" placeholder="0">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">Horas Online</label>
+                    <input type="number" step="0.1" id="editSemanaHoras" placeholder="0.0">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">Gastos na Rua</label>
+                    <input type="number" step="0.01" id="editSemanaRua" placeholder="0.00">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">Litros Abastecidos</label>
+                    <input type="number" step="0.01" id="editSemanaLitros" placeholder="0" oninput="calcularCombustivelEdicaoSemanal()">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">Valor Abastecido (R$)</label>
+                    <input type="number" step="0.01" id="editSemanaValorAbast" placeholder="0.00">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.75rem;">Reserva IPVA (R$)</label>
+                    <input type="number" step="0.01" id="editSemanaIpva" placeholder="10.00">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.75rem;">Reserva Manut. (R$)</label>
+                    <input type="number" step="0.01" id="editSemanaManut" placeholder="15.00">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.75rem;">Caixinha (R$)</label>
+                    <input type="number" step="0.01" id="editSemanaCaixa" placeholder="10.00">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-action" style="margin-top: 4px; flex: 1; background: var(--primary-color);" onclick="salvarEdicaoSemanal()">Salvar Alterações</button>
+                <button class="btn-action" id="btnExcluirDiaSemana" style="margin-top: 4px; background: var(--danger-color); color: #fff; display:none; flex: 0.5;" onclick="excluirDiaSemanal()">Excluir Dia</button>
+            </div>
+        </div>
+
+        <div class="sobra-livre-box" style="margin-top: 0; margin-bottom: 12px;">
+            <div style="font-size: 0.8rem; color: #ccc; text-transform: uppercase;">Quanto Sobrou na Semana (Líquido)</div>
+            <div class="sobra-livre-val" id="semanaLiquido">R$ 0,00</div>
+        </div>
+
+        <div class="mensal-grid">
+            <div class="mensal-mini-card km">
+                <span>Total KM Rodados</span>
+                <h4 id="semanaKmTotal">0 km</h4>
+            </div>
+            <div class="mensal-mini-card vkm">
+                <span>Fat. por KM</span>
+                <h4 id="semanaValorKm">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card vhr">
+                <span>Fat. por Hora</span>
+                <h4 id="semanaValorHr">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card ipva">
+                <span>Guardado IPVA</span>
+                <h4 id="semanaIpva">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card manut">
+                <span>Guardado Manut.</span>
+                <h4 id="semanaManutencao">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card caix">
+                <span>Guardado Caixinha</span>
+                <h4 id="semanaCaixinha">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card gasolina">
+                <span>Gasto com Gasolina</span>
+                <h4 id="semanaGasolina">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card custos-fixos">
+                <span>Custos Fixos Pagos</span>
+                <h4 id="semanaCustosFixos">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card manutencao-total" style="grid-column: span 2;">
+                <span>Manutenção a Pagar na Semana</span>
+                <h4 id="semanaManutencaoPagar">R$ 0,00</h4>
+            </div>
+        </div>
+
+        <div class="mensal-footer-stats">
+            <div class="result-item" style="margin-bottom: 8px;"><span>Dias Trabalhados:</span> <span id="semanaDias" style="color:#fff; font-size: 1.1rem;">0 dias</span></div>
+            <div class="result-item" style="margin-bottom: 0;"><span>Média Líquida Diária:</span> <span id="semanaMediaDia" style="font-size: 1.1rem;">R$ 0,00</span></div>
+        </div>
+    </div>
+
+    <!-- ABA MENSAL -->
+    <div id="tabMensal" style="display: none;">
+        <div class="section-title">Balanço do Mês</div>
+        
+        <div class="mensal-hero">
+            <div class="mes-seletor-container">
+                <input type="month" id="filtroMesAno" onchange="renderizarMensal()">
+            </div>
+
+            <div class="mensal-hero-label">Ganhos Totais do Mês (Bruto)</div>
+            <div id="mesBrutoGrande" class="mensal-hero-value">R$ 0,00</div>
+            
+            <div style="font-size: 0.7rem; color: var(--edit-color); text-align: center; margin-bottom: 4px; font-weight: bold;">
+                Calendário do Mês (Toque em um dia para editar):
+            </div>
+            
+            <div class="calendar-grid">
+                <div class="calendar-header-day">Seg</div>
+                <div class="calendar-header-day">Ter</div>
+                <div class="calendar-header-day">Qua</div>
+                <div class="calendar-header-day">Qui</div>
+                <div class="calendar-header-day">Sex</div>
+                <div class="calendar-header-day">Sáb</div>
+                <div class="calendar-header-day">Dom</div>
+            </div>
+            <div class="calendar-grid" id="calendarDaysContainer" style="margin-top: 2px;"></div>
+        </div>
+
+        <!-- PAINEL DE EDIÇÃO FLUTUANTE NA ABA MENSAL -->
+        <div id="painelEdicaoMensal" style="display: none; background: #181818; border: 2px solid var(--edit-color); padding: 14px; border-radius: 10px; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong id="tituloEdicaoMensal" style="color: var(--edit-color); font-size: 0.95rem;">Editar Dia</strong>
+                <button class="btn-sm btn-delete" onclick="fecharEdicaoMensal()" style="padding: 2px 8px; font-size: 0.75rem;">✕ Fechar</button>
+            </div>
+            
+            <input type="hidden" id="editMesDataIso">
+            
+            <div class="form-group" style="margin-bottom: 8px;">
+                <label style="font-size: 0.8rem;">Faturamento Bruto (R$)</label>
+                <input type="number" step="0.01" id="editMesBruto" placeholder="0.00">
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">KM Inicial</label>
+                    <input type="number" step="1" id="editMesKmIni" placeholder="0">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">KM Final</label>
+                    <input type="number" step="1" id="editMesKmFim" placeholder="0">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">Horas Online</label>
+                    <input type="number" step="0.1" id="editMesHoras" placeholder="0.0">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">Gastos na Rua</label>
+                    <input type="number" step="0.01" id="editMesRua" placeholder="0.00">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">Litros Abastecidos</label>
+                    <input type="number" step="0.01" id="editMesLitros" placeholder="0" oninput="calcularCombustivelEdicaoMensal()">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem;">Valor Abastecido (R$)</label>
+                    <input type="number" step="0.01" id="editMesValorAbast" placeholder="0.00">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.75rem;">Reserva IPVA (R$)</label>
+                    <input type="number" step="0.01" id="editMesIpva" placeholder="10.00">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.75rem;">Reserva Manut. (R$)</label>
+                    <input type="number" step="0.01" id="editMesManut" placeholder="15.00">
+                </div>
+                <div class="form-group" style="flex:1; margin-bottom: 8px;">
+                    <label style="font-size: 0.75rem;">Caixinha (R$)</label>
+                    <input type="number" step="0.01" id="editMesCaixa" placeholder="10.00">
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-action" style="margin-top: 4px; flex: 1; background: var(--primary-color);" onclick="salvarEdicaoMensalTab()">Salvar Alterações</button>
+                <button class="btn-action" id="btnExcluirDiaMensal" style="margin-top: 4px; background: var(--danger-color); color: #fff; display:none; flex: 0.5;" onclick="excluirDiaMensalTab()">Excluir Dia</button>
+            </div>
+        </div>
+
+        <div class="sobra-livre-box" style="margin-top: 0; margin-bottom: 12px;">
+            <div style="font-size: 0.8rem; color: #ccc; text-transform: uppercase;">Quanto Sobrou no Mês (Líquido)</div>
+            <div class="sobra-livre-val" id="mesLiquido">R$ 0,00</div>
+        </div>
+
+        <div class="mensal-grid">
+            <div class="mensal-mini-card km">
+                <span>Total KM Rodados</span>
+                <h4 id="mesKmTotal">0 km</h4>
+            </div>
+            <div class="mensal-mini-card vkm">
+                <span>Fat. por KM</span>
+                <h4 id="mesValorKm">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card vhr">
+                <span>Fat. por Hora</span>
+                <h4 id="mesValorHr">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card ipva">
+                <span>Guardado IPVA</span>
+                <h4 id="mesIpva">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card manut">
+                <span>Guardado Manut.</span>
+                <h4 id="mesManutencao">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card caix">
+                <span>Guardado Caixinha</span>
+                <h4 id="mesCaixinha">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card gasolina">
+                <span>Gasto com Gasolina no Mês</span>
+                <h4 id="mesGasolina">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card custos-fixos">
+                <span>Custos Fixos no Mês</span>
+                <h4 id="mesCustosFixos">R$ 0,00</h4>
+            </div>
+            <div class="mensal-mini-card manutencao-total" style="grid-column: span 2;">
+                <span>Manutenção a Pagar no Mês (Crédito ou Parcelado)</span>
+                <h4 id="mesManutencaoPagar">R$ 0,00</h4>
+            </div>
+        </div>
+
+        <div class="mensal-footer-stats">
+            <div class="result-item" style="margin-bottom: 8px;"><span>Dias Trabalhados:</span> <span id="mesDias" style="color:#fff; font-size: 1.1rem;">0 dias</span></div>
+            <div class="result-item" style="margin-bottom: 0;"><span>Média Líquida Diária:</span> <span id="mesMediaDia" style="font-size: 1.1rem;">R$ 0,00</span></div>
+        </div>
+    </div>
+
+    <!-- ABA HISTÓRICO -->
+    <div id="tabHistorico" style="display: none;">
+        <div class="section-title">Histórico de Lançamentos</div>
+        <div id="painelEdicaoHistorico"></div>
+        <div id="listaHistorico" style="max-height: 450px; overflow-y: auto;"></div>
+    </div>
+</div>
 
 <!-- Módulo de verificação de versão em tempo real com Firestore -->
 <script type="module">
@@ -934,6 +1221,16 @@
             await processarNovoUsuarioOuDispositivo(user);
         } catch (error) {
             alert("Erro no login com Google: " + error.message);
+        }
+    });
+
+    document.getElementById('btnRegister').addEventListener('click', async () => {
+        try {
+            const result = await auth.signInWithPopup(provider);
+            const user = result.user;
+            await processarNovoUsuarioOuDispositivo(user);
+        } catch (error) {
+            alert("Erro ao criar conta com Google: " + error.message);
         }
     });
 
@@ -1118,24 +1415,6 @@
         }
     }
 
-    async function assinar(linkDoPlano) {
-        let user = auth.currentUser;
-        let emailUsuario = user ? user.email : localStorage.getItem("usuario_email");
-        if (!emailUsuario) { alert("Por favor, certifique-se de estar logado."); return; }
-        
-        localStorage.setItem("usuario_email", emailUsuario);
-        localStorage.setItem("aguardando_pagamento", "true");
-        
-        let statusEl = document.getElementById('statusPlanoDias');
-        if (statusEl) statusEl.innerHTML = `⏳ Redirecionando para o pagamento, aguarde...`;
-
-        if (window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes("wv")) {
-            window.open(linkDoPlano, '_system');
-        } else {
-            window.location.href = linkDoPlano;
-        }
-    }
-
     window.atualizarDiaSemanaPorData = function(idInputData, idSelectDiaSemana) {
         let valData = document.getElementById(idInputData).value;
         if (!valData) return;
@@ -1193,862 +1472,28 @@
                 bloqueado = true;
             }
         } else {
-            let dataExpiracao = new Date(dados.dataExpiracao);
-            let diffMilissegundos = dataExpiracao - agora;
-            diasRestantes = Math.ceil(diffMilissegundos / (1000 * 60 * 60 * 24));
-
-            if (!isNaN(diasRestantes) && diasRestantes > 0) {
-                if(statusEl) statusEl.innerHTML = `💎 ${dados.nomePlano || 'Plano Ativo'}: Restam <b>${diasRestantes} dia(s)</b>`;
-                if(menuTextoEl) menuTextoEl.innerHTML = `💎 ${dados.nomePlano || 'Plano Ativo'} (${diasRestantes} dias restantes)`;
+            if (dados.dataExpiracao) {
+                let dataExp = new Date(dados.dataExpiracao);
+                let diffExp = dataExp - agora;
+                diasRestantes = Math.ceil(diffExp / (1000 * 60 * 60 * 24));
+                if (diasRestantes < 0) diasRestantes = 0;
+                
+                if(statusEl) statusEl.innerHTML = `✅ Plano Ativo (${diasRestantes} dias restantes)`;
+                if(menuTextoEl) menuTextoEl.innerHTML = `✅ Plano Ativo (${diasRestantes} dias)`;
             } else {
-                bloqueado = true;
-                if(menuTextoEl) menuTextoEl.innerHTML = `❌ Assinatura Expirada`;
-                if(statusEl) statusEl.innerHTML = `❌ Plano Expirado`;
+                if(statusEl) statusEl.innerHTML = `✅ Plano Ativo`;
+                if(menuTextoEl) menuTextoEl.innerHTML = `✅ Plano Ativo`;
             }
         }
 
-        contaBloqueadaGlobal = bloqueado;
-        let abaPlanosAtiva = document.getElementById('tabPlanos').style.display === 'block';
-
-        if (bloqueado && telaBloqueio && !abaPlanosAtiva) {
-            telaBloqueio.style.display = 'flex';
-        } else if(telaBloqueio) {
-            telaBloqueio.style.display = 'none';
-        }
-    }
-
-    window.salvarConfiguracoes = function() {
-        memoriaConfig.parcela = parseFloat(document.getElementById('cfgParcelaMensal').value) || 0;
-        memoriaConfig.seguro = parseFloat(document.getElementById('cfgSeguroMensal').value) || 0;
-        memoriaConfig.diasMes = parseFloat(document.getElementById('cfgDiasMes').value) || 26;
-        atualizarValoresAutomaticosDia();
-        calcular();
-        salvarDadosNoServidor();
-    };
-
-    window.atualizarValoresAutomaticosDia = function() {
-        let dias = memoriaConfig.diasMes > 0 ? memoriaConfig.diasMes : 26;
-        document.getElementById('parcelaCarro').value = (memoriaConfig.parcela / dias).toFixed(2);
-        document.getElementById('seguroCarro').value = (memoriaConfig.seguro / dias).toFixed(2);
-    };
-
-    function getCustosFixosAtuais() {
-        let dias = memoriaConfig.diasMes > 0 ? memoriaConfig.diasMes : 26;
-        return (memoriaConfig.parcela / dias) + (memoriaConfig.seguro / dias);
-    }
-
-    window.mudarTab = function(aba) {
-        if (contaBloqueadaGlobal && aba !== 'planos') {
-            document.getElementById('telaBloqueio').style.display = 'flex';
-            return;
-        }
-
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        ['tabDiario', 'tabSemana', 'tabMensal', 'tabConfig', 'tabHistorico', 'tabManutencaoCarro', 'tabPlanos'].forEach(id => {
-            document.getElementById(id).style.display = 'none';
-        });
-        const tabBtns = document.querySelectorAll('.tab-btn');
-
-        if(aba === 'diario') { 
-            document.getElementById('tabDiario').style.display = 'block'; 
-            if(tabBtns[0]) tabBtns[0].classList.add('active'); 
-            atualizarValoresAutomaticosDia(); 
-            calcular(); 
-        }
-        else if(aba === 'semana') { 
-            document.getElementById('tabSemana').style.display = 'block'; 
-            if(tabBtns[1]) tabBtns[1].classList.add('active'); 
-            renderizarSemanal(); 
-        }
-        else if(aba === 'mensal') { 
-            document.getElementById('tabMensal').style.display = 'block'; 
-            if(tabBtns[2]) tabBtns[2].classList.add('active'); 
-            renderizarMensal(); 
-        }
-        else if(aba === 'manutencaoCarro') { 
-            document.getElementById('tabManutencaoCarro').style.display = 'block'; 
-            if(tabBtns[3]) tabBtns[3].classList.add('active'); 
-            renderizarManutencoesCarro(); 
-        }
-        else if(aba === 'historico') { 
-            document.getElementById('tabHistorico').style.display = 'block'; 
-            if(tabBtns[4]) tabBtns[4].classList.add('active'); 
-            renderizarHistorico(); 
-        }
-        else if(aba === 'config') { 
-            document.getElementById('tabConfig').style.display = 'block'; 
-            if(tabBtns[5]) tabBtns[5].classList.add('active'); 
-        }
-        else if(aba === 'planos') { 
-            document.getElementById('tabPlanos').style.display = 'block'; 
-            if(tabBtns[6]) tabBtns[6].classList.add('active');
-            let telaBloqueio = document.getElementById('telaBloqueio');
+        if (bloqueado) {
+            contaBloqueadaGlobal = true;
+            if(telaBloqueio) telaBloqueio.style.display = 'flex';
+        } else {
+            contaBloqueadaGlobal = false;
             if(telaBloqueio) telaBloqueio.style.display = 'none';
-            let user = auth.currentUser; 
-            if(user) verificarEAtualizarStatusAssinaturaFirestore(user); 
         }
-    };
-
-    window.tentarVoltarAoDiario = function() {
-        if (contaBloqueadaGlobal) {
-            document.getElementById('telaBloqueio').style.display = 'flex';
-        } else {
-            mudarTab('diario');
-        }
-    };
-
-    window.alternarParcelasPeca = function() {
-        const forma = document.getElementById('manutFormaPeca').value;
-        document.getElementById('containerParcelasPeca').style.display = (forma === 'Crédito') ? 'block' : 'none';
-        document.getElementById('containerVencimentoPeca').style.display = (forma === 'Crédito') ? 'block' : 'none';
-    };
-
-    window.alternarParcelasObra = function() {
-        const forma = document.getElementById('manutFormaObra').value;
-        document.getElementById('containerParcelasObra').style.display = (forma === 'Crédito') ? 'block' : 'none';
-        document.getElementById('containerVencimentoObra').style.display = (forma === 'Crédito') ? 'block' : 'none';
-    };
-
-    function gerarParcelasManutencao(valorTotal, forma, numParcelas, primeiraData) {
-        if (forma !== 'Crédito' || numParcelas <= 1 || !primeiraData) {
-            return [{ valor: valorTotal, vencimento: primeiraData || new Date().toISOString().split('T')[0] }];
-        }
-        let valorParcela = valorTotal / numParcelas;
-        let parcelas = [];
-        let [ano, mes, dia] = primeiraData.split('-').map(Number);
-
-        for (let i = 0; i < numParcelas; i++) {
-            let m = mes - 1 + i;
-            let a = ano + Math.floor(m / 12);
-            m = m % 12;
-            let d = new Date(a, m, dia);
-            let dataStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            parcelas.push({ valor: valorParcela, vencimento: dataStr });
-        }
-        return parcelas;
     }
-
-    window.salvarManutencaoCarro = function() {
-        let editId = document.getElementById('editManutencaoId').value;
-        let servico = document.getElementById('manutServico').value.trim();
-        let valorPeca = parseFloat(document.getElementById('manutValorPeca').value) || 0;
-        let formaPeca = document.getElementById('manutFormaPeca').value;
-        let parcelasPecaCount = (formaPeca === 'Crédito') ? parseInt(document.getElementById('manutParcelasPeca').value) || 1 : 1;
-        let vencPeca = document.getElementById('manutVencimentoPeca').value || new Date().toISOString().split('T')[0];
-
-        let maoObra = parseFloat(document.getElementById('manutMaoObra').value) || 0;
-        let formaObra = document.getElementById('manutFormaObra').value;
-        let parcelasObraCount = (formaObra === 'Crédito') ? parseInt(document.getElementById('manutParcelasObraSelect').value) || 1 : 1;
-        let vencObra = document.getElementById('manutVencimentoObra').value || new Date().toISOString().split('T')[0];
-
-        let kmFeito = parseFloat(document.getElementById('manutKmFeito').value) || 0;
-        let kmRefazer = parseFloat(document.getElementById('manutKmRefazer').value) || 0;
-
-        if(!servico) { alert("Digite o serviço realizado."); return; }
-
-        let listaParcelasPeca = gerarParcelasManutencao(valorPeca, formaPeca, parcelasPecaCount, vencPeca);
-        let listaParcelasObra = gerarParcelasManutencao(maoObra, formaObra, parcelasObraCount, vencObra);
-        let custoTotal = valorPeca + maoObra;
-
-        let manutObj = {
-            idDoc: editId ? editId : 'manut_' + Date.now(),
-            servico, valorPeca, formaPeca, parcelasPeca: parcelasPecaCount, vencimentoPeca: vencPeca, parcelasPecaLista: listaParcelasPeca,
-            maoObra, formaObra, parcelasObra: parcelasObraCount, vencimentoObra: vencObra, parcelasObraLista: listaParcelasObra,
-            custoTotal, kmFeito, kmRefazer,
-            dataRegistro: new Date().toLocaleDateString('pt-BR')
-        };
-
-        if (editId) {
-            let index = memoriaManutencoes.findIndex(m => m.idDoc === editId);
-            if(index !== -1) memoriaManutencoes[index] = manutObj;
-            alert("Manutenção atualizada com sucesso!");
-        } else {
-            memoriaManutencoes.push(manutObj);
-            alert("Manutenção registrada com sucesso!");
-        }
-        cancelarEdicaoManutencaoCarro();
-        renderizarManutencoesCarro();
-        renderizarSemanal();
-        renderizarMensal();
-        salvarDadosNoServidor();
-    };
-
-    window.editarManutencaoCarro = function(idDoc) {
-        let item = memoriaManutencoes.find(m => m.idDoc === idDoc);
-        if(!item) return;
-
-        document.getElementById('editManutencaoId').value = item.idDoc;
-        document.getElementById('manutServico').value = item.servico || '';
-        document.getElementById('manutValorPeca').value = item.valorPeca || '';
-        document.getElementById('manutFormaPeca').value = item.formaPeca || 'Pix';
-        alternarParcelasPeca();
-        if(item.formaPeca === 'Crédito') {
-            document.getElementById('manutParcelasPeca').value = item.parcelasPeca || 1;
-            if(item.vencimentoPeca) document.getElementById('manutVencimentoPeca').value = item.vencimentoPeca;
-        }
-
-        document.getElementById('manutMaoObra').value = item.maoObra || '';
-        document.getElementById('manutFormaObra').value = item.formaObra || 'Pix';
-        alternarParcelasObra();
-        if(item.formaObra === 'Crédito') {
-            document.getElementById('manutParcelasObraSelect').value = item.parcelasObra || 1;
-            if(item.vencimentoObra) document.getElementById('manutVencimentoObra').value = item.vencimentoObra;
-        }
-
-        document.getElementById('manutKmFeito').value = item.kmFeito || '';
-        document.getElementById('manutKmRefazer').value = item.kmRefazer || '';
-
-        document.getElementById('btnSalvarManutencao').innerText = "Atualizar Manutenção";
-        document.getElementById('btnCancelarManutencao').style.display = 'block';
-        window.scrollTo({top: 0, behavior: 'smooth'});
-    };
-
-    window.cancelarEdicaoManutencaoCarro = function() {
-        document.getElementById('editManutencaoId').value = '';
-        document.getElementById('manutServico').value = '';
-        document.getElementById('manutValorPeca').value = '';
-        document.getElementById('manutFormaPeca').value = 'Pix';
-        alternarParcelasPeca();
-        document.getElementById('manutMaoObra').value = '';
-        document.getElementById('manutFormaObra').value = 'Pix';
-        alternarParcelasObra();
-        document.getElementById('manutKmFeito').value = '';
-        document.getElementById('manutKmRefazer').value = '';
-        document.getElementById('btnSalvarManutencao').innerText = "Adicionar Manutenção";
-        document.getElementById('btnCancelarManutencao').style.display = 'none';
-    };
-
-    window.deletarManutencaoCarro = function(idDoc) {
-        if(confirm("Deseja realmente excluir este registro de manutenção?")) {
-            memoriaManutencoes = memoriaManutencoes.filter(m => m.idDoc !== idDoc);
-            renderizarManutencoesCarro();
-            renderizarSemanal();
-            renderizarMensal();
-            salvarDadosNoServidor();
-        }
-    };
-
-    window.renderizarManutencoesCarro = function() {
-        let container = document.getElementById('listaManutencoesCarro');
-        if(!container) return;
-        if(memoriaManutencoes.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #777; font-size: 0.9rem;">Nenhuma manutenção registrada.</p>`;
-            return;
-        }
-        let html = '';
-        memoriaManutencoes.forEach(m => {
-            html += `
-                <div class="historico-item" style="flex-direction: column; align-items: flex-start; gap: 6px;">
-                    <div style="display: flex; justify-content: space-between; width: 100%;">
-                        <strong style="color: var(--primary-color); font-size: 1rem;">${m.servico}</strong>
-                        <span style="font-size: 0.75rem; color: #aaa;">${m.dataRegistro || ''}</span>
-                    </div>
-                    <div style="font-size: 0.85rem; color: #ddd; line-height: 1.4;">
-                        Custo Total: <b>R$ ${(m.custoTotal || 0).toFixed(2).replace('.', ',')}</b><br>
-                        • Peça: R$ ${(m.valorPeca||0).toFixed(2)} [${m.formaPeca}${m.formaPeca==='Crédito'?` ${m.parcelasPeca}x (1º Venc: ${m.vencimentoPeca})`:''}]<br>
-                        • M. Obra: R$ ${(m.maoObra||0).toFixed(2)} [${m.formaObra}${m.formaObra==='Crédito'?` ${m.parcelasObra}x (1º Venc: ${m.vencimentoObra})`:''}]
-                    </div>
-                    <div style="display: flex; gap: 6px; margin-top: 4px; width: 100%; justify-content: flex-end;">
-                        <button class="btn-sm btn-edit" onclick="editarManutencaoCarro('${m.idDoc}')">Editar</button>
-                        <button class="btn-sm btn-delete" onclick="deletarManutencaoCarro('${m.idDoc}')">Excluir</button>
-                    </div>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
-    };
-
-    window.calcularCombustivelPorLitros = function() {
-        let litros = parseFloat(document.getElementById('litros').value) || 0;
-        let precoLitro = parseFloat(document.getElementById('precoLitro').value) || 0;
-        if(litros > 0 && precoLitro > 0) document.getElementById('valorAbastecido').value = (litros * precoLitro).toFixed(2);
-        calcular();
-    };
-
-    window.calcularCombustivelEdicaoSemanal = function() {
-        let litros = parseFloat(document.getElementById('editSemanaLitros').value) || 0;
-        let precoLitro = parseFloat(document.getElementById('precoLitro').value) || 4.09;
-        if(litros > 0) {
-            document.getElementById('editSemanaValorAbast').value = (litros * precoLitro).toFixed(2);
-        }
-    };
-
-    window.calcularCombustivelEdicaoMensal = function() {
-        let litros = parseFloat(document.getElementById('editMesLitros').value) || 0;
-        let precoLitro = parseFloat(document.getElementById('precoLitro').value) || 4.09;
-        if(litros > 0) {
-            document.getElementById('editMesValorAbast').value = (litros * precoLitro).toFixed(2);
-        }
-    };
-
-    window.toggleCronometro = function() {
-        let btn = document.getElementById('btnChrono');
-        if(!cronometroAtivo) {
-            cronometroAtivo = true;
-            btn.innerText = "Parar";
-            btn.className = "btn-chrono btn-stop";
-            intervalo = setInterval(() => {
-                segundosTotais++;
-                document.getElementById('horasOnline').value = (segundosTotais / 3600).toFixed(2);
-                calcular();
-            }, 1000);
-        } else {
-            cronometroAtivo = false;
-            btn.innerText = "Iniciar";
-            btn.className = "btn-chrono btn-start";
-            clearInterval(intervalo);
-        }
-    };
-
-    window.calcular = function() {
-        let bruto = parseFloat(document.getElementById('bruto').value) || 0;
-        let kmIni = parseFloat(document.getElementById('kmInicial').value) || 0;
-        let kmFim = parseFloat(document.getElementById('kmFinal').value) || 0;
-        let kmRodados = (kmFim > kmIni) ? (kmFim - kmIni) : 0;
-        let mediaKmLitro = parseFloat(document.getElementById('mediaKmLitro').value) || 10;
-        let precoLitro = parseFloat(document.getElementById('precoLitro').value) || 0;
-        let valorAbast = parseFloat(document.getElementById('valorAbastecido').value) || 0;
-
-        let gastoCombustivel = valorAbast > 0 ? valorAbast : ((kmRodados / mediaKmLitro) * precoLitro);
-        let custosFixosDia = getCustosFixosAtuais();
-        let gastosRua = parseFloat(document.getElementById('gastosRua').value) || 0;
-        let horas = parseFloat(document.getElementById('horasOnline').value) || 0;
-
-        let ipvaReserva = parseFloat(document.getElementById('reservaIpva').value) || 0;
-        let manutReserva = parseFloat(document.getElementById('reservaManutencao').value) || 0;
-        let caixinhaReserva = parseFloat(document.getElementById('reservaCaixinha').value) || 0;
-
-        let totalDescontos = gastoCombustivel + custosFixosDia + gastosRua + ipvaReserva + manutReserva + caixinhaReserva;
-        let liquido = bruto - totalDescontos;
-
-        let porHora = horas > 0 ? (liquido / horas) : 0;
-        let porKm = kmRodados > 0 ? (bruto / kmRodados) : 0;
-
-        document.getElementById('resKm').innerText = `${kmRodados} km`;
-        document.getElementById('resCombustivel').innerText = `R$ ${gastoCombustivel.toFixed(2).replace('.', ',')}`;
-        document.getElementById('resCustosFixos').innerText = `R$ ${custosFixosDia.toFixed(2).replace('.', ',')}`;
-        document.getElementById('resGastosRua').innerText = `R$ ${gastosRua.toFixed(2).replace('.', ',')}`;
-        document.getElementById('resPorHora').innerText = `R$ ${porHora.toFixed(2).replace('.', ',')} /h`;
-        document.getElementById('resPorKm').innerText = `R$ ${porKm.toFixed(2).replace('.', ',')} /km`;
-        document.getElementById('resLiquido').innerText = `R$ ${liquido.toFixed(2).replace('.', ',')}`;
-    };
-
-    window.salvarDia = function() {
-        let dataIso = document.getElementById('dataRegistro').value;
-        if(!dataIso) { alert("Selecione a data do registro."); return; }
-        let bruto = parseFloat(document.getElementById('bruto').value) || 0;
-        if(bruto <= 0) { alert("Informe o faturamento bruto."); return; }
-
-        let kmIni = parseFloat(document.getElementById('kmInicial').value) || 0;
-        let kmFim = parseFloat(document.getElementById('kmFinal').value) || 0;
-        let kmRodados = (kmFim > kmIni) ? (kmFim - kmIni) : 0;
-        let mediaKmLitro = parseFloat(document.getElementById('mediaKmLitro').value) || 10;
-        let precoLitro = parseFloat(document.getElementById('precoLitro').value) || 0;
-        let valorAbast = parseFloat(document.getElementById('valorAbastecido').value) || 0;
-        let litros = parseFloat(document.getElementById('litros').value) || 0;
-        let gastoCombustivel = valorAbast > 0 ? valorAbast : ((kmRodados / mediaKmLitro) * precoLitro);
-
-        let dadosDia = {
-            id: document.getElementById('editIndex').value || 'dia_' + Date.now(),
-            data: dataIso,
-            diaSemana: document.getElementById('diaSemana').value,
-            bruto: bruto,
-            kmInicial: kmIni,
-            kmFinal: kmFim,
-            kmRodados: kmRodados,
-            horasOnline: parseFloat(document.getElementById('horasOnline').value) || 0,
-            litros: litros,
-            valorAbastecido: valorAbast,
-            gastoCombustivel: gastoCombustivel,
-            gastosRua: parseFloat(document.getElementById('gastosRua').value) || 0,
-            custosFixos: getCustosFixosAtuais(),
-            reservaIpva: parseFloat(document.getElementById('reservaIpva').value) || 0,
-            reservaManutencao: parseFloat(document.getElementById('reservaManutencao').value) || 0,
-            reservaCaixinha: parseFloat(document.getElementById('reservaCaixinha').value) || 0
-        };
-
-        let indexEdit = document.getElementById('editIndex').value;
-        if(indexEdit) {
-            let idx = memoriaHistorico.findIndex(item => item.id === indexEdit);
-            if(idx !== -1) memoriaHistorico[idx] = dadosDia;
-            document.getElementById('editIndex').value = '';
-            document.getElementById('btnSalvar').innerText = "Salvar Dia no Histórico";
-        } else {
-            memoriaHistorico = memoriaHistorico.filter(item => item.data !== dataIso);
-            memoriaHistorico.push(dadosDia);
-        }
-
-        memoriaHistorico.sort((a,b) => new Date(b.data) - new Date(a.data));
-        alert("Dia salvo com sucesso!");
-        salvarDadosNoServidor();
-        renderizarHistorico();
-        renderizarSemanal();
-        renderizarMensal();
-    };
-
-    window.renderizarHistorico = function() {
-        let container = document.getElementById('listaHistorico');
-        if(!container) return;
-        if(memoriaHistorico.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #777; font-size: 0.9rem;">Nenhum dia registrado no histórico.</p>`;
-            return;
-        }
-        let html = '';
-        memoriaHistorico.forEach(item => {
-            let [ano, mes, dia] = item.data.split('-');
-            let dataFormatada = `${dia}/${mes}/${ano}`;
-            let liquido = item.bruto - (item.gastoCombustivel + item.custosFixos + item.gastosRua + item.reservaIpva + item.reservaManutencao + item.reservaCaixinha);
-            html += `
-                <div class="historico-item">
-                    <div>
-                        <strong style="color: var(--primary-color);">${dataFormatada} (${item.diaSemana})</strong><br>
-                        <span style="font-size: 0.85rem; color: #ccc;">Bruto: R$ ${item.bruto.toFixed(2)} | Líquido: R$ ${liquido.toFixed(2)}</span>
-                    </div>
-                    <div style="display: flex; gap: 6px;">
-                        <button class="btn-sm btn-edit" onclick="editarHistorico('${item.id}')">Editar</button>
-                        <button class="btn-sm btn-delete" onclick="deletarHistorico('${item.id}')">Excluir</button>
-                    </div>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
-    };
-
-    window.mudarSemanaOffset = function(delta) {
-        semanaOffsetAtual += delta;
-        renderizarSemanal();
-    };
-
-    window.renderizarSemanal = function() {
-        let hoje = new Date();
-        let primeiroDiaDaSemana = new Date(hoje.setDate(hoje.getDate() - hoje.getDay() + (semanaOffsetAtual * 7)));
-        primeiroDiaDaSemana.setHours(0,0,0,0);
-
-        let fimSemana = new Date(primeiroDiaDaSemana);
-        fimSemana.setDate(primeiroDiaDaSemana.getDate() + 6);
-
-        let labelIntervalo = document.getElementById('semanaLabelIntervalo');
-        if(labelIntervalo) {
-            labelIntervalo.innerText = `${primeiroDiaDaSemana.toLocaleDateString('pt-BR')} até ${fimSemana.toLocaleDateString('pt-BR')}`;
-        }
-
-        let diasDaSemanaArray = [];
-        let brutoTotalSemana = 0;
-        let liquidoTotalSemana = 0;
-        let kmTotalSemana = 0;
-        let horasTotalSemana = 0;
-        let ipvaTotalSemana = 0;
-        let manutTotalSemana = 0;
-        let caixinhaTotalSemana = 0;
-        let gasolinaTotalSemana = 0;
-        let custosFixosTotalSemana = 0;
-        let diasTrabalhadosCount = 0;
-
-        for(let i=0; i<7; i++) {
-            let d = new Date(primeiroDiaDaSemana);
-            d.setDate(primeiroDiaDaSemana.getDate() + i);
-            let isoStr = d.toISOString().split('T')[0];
-            let diaRegistro = memoriaHistorico.find(item => item.data === isoStr);
-
-            diasDaSemanaArray.push({
-                dataIso: isoStr,
-                diaNum: d.getDate(),
-                diaSemanaNome: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][i],
-                registro: diaRegistro
-            });
-
-            if(diaRegistro) {
-                diasTrabalhadosCount++;
-                brutoTotalSemana += diaRegistro.bruto || 0;
-                kmTotalSemana += diaRegistro.kmRodados || 0;
-                horasTotalSemana += diaRegistro.horasOnline || 0;
-                ipvaTotalSemana += diaRegistro.reservaIpva || 0;
-                manutTotalSemana += diaRegistro.reservaManutencao || 0;
-                caixinhaTotalSemana += diaRegistro.reservaCaixinha || 0;
-                gasolinaTotalSemana += diaRegistro.gastoCombustivel || 0;
-                custosFixosTotalSemana += diaRegistro.custosFixos || 0;
-
-                let liquidoDia = diaRegistro.bruto - ((diaRegistro.gastoCombustivel || 0) + (diaRegistro.custosFixos || 0) + (diaRegistro.gastosRua || 0) + (diaRegistro.reservaIpva || 0) + (diaRegistro.reservaManutencao || 0) + (diaRegistro.reservaCaixinha || 0));
-                liquidoTotalSemana += liquidoDia;
-            }
-        }
-
-        let manutencaoPagarSemana = 0;
-        memoriaManutencoes.forEach(m => {
-            if(m.parcelasPecaLista) {
-                m.parcelasPecaLista.forEach(p => {
-                    let pDate = new Date(p.vencimento + 'T00:00:00');
-                    if(pDate >= primeiroDiaDaSemana && pDate <= fimSemana) {
-                        manutencaoPagarSemana += p.valor;
-                    }
-                });
-            }
-            if(m.parcelasObraLista) {
-                m.parcelasObraLista.forEach(p => {
-                    let pDate = new Date(p.vencimento + 'T00:00:00');
-                    if(pDate >= primeiroDiaDaSemana && pDate <= fimSemana) {
-                        manutencaoPagarSemana += p.valor;
-                    }
-                });
-            }
-        });
-
-        let barrinhaContainer = document.getElementById('semanaBarrinhaDias');
-        if(barrinhaContainer) {
-            let htmlBarrinhas = '';
-            diasDaSemanaArray.forEach(item => {
-                let workedClass = item.registro ? 'worked' : '';
-                let valStr = item.registro ? `R$ ${item.registro.bruto.toFixed(0)}` : '-';
-                htmlBarrinhas += `
-                    <div class="calendar-day-cell ${workedClass}" onclick="abrirEdicaoSemanal('${item.dataIso}')">
-                        <span class="cal-day-num">${item.diaSemanaNome} ${item.diaNum}</span>
-                        <span class="cal-day-val">${valStr}</span>
-                    </div>
-                `;
-            });
-            barrinhaContainer.innerHTML = htmlBarrinhas;
-        }
-
-        document.getElementById('semanaBrutoGrande').innerText = `R$ ${brutoTotalSemana.toFixed(2).replace('.', ',')}`;
-        document.getElementById('semanaLiquido').innerText = `R$ ${liquidoTotalSemana.toFixed(2).replace('.', ',')}`;
-        document.getElementById('semanaKmTotal').innerText = `${kmTotalSemana} km`;
-        document.getElementById('semanaValorKm').innerText = kmTotalSemana > 0 ? `R$ ${(brutoTotalSemana / kmTotalSemana).toFixed(2).replace('.', ',')}` : `R$ 0,00`;
-        document.getElementById('semanaValorHr').innerText = horasTotalSemana > 0 ? `R$ ${(liquidoTotalSemana / horasTotalSemana).toFixed(2).replace('.', ',')}` : `R$ 0,00`;
-        document.getElementById('semanaIpva').innerText = `R$ ${ipvaTotalSemana.toFixed(2).replace('.', ',')}`;
-        document.getElementById('semanaManutencao').innerText = `R$ ${manutTotalSemana.toFixed(2).replace('.', ',')}`;
-        document.getElementById('semanaCaixinha').innerText = `R$ ${caixinhaTotalSemana.toFixed(2).replace('.', ',')}`;
-        document.getElementById('semanaGasolina').innerText = `R$ ${gasolinaTotalSemana.toFixed(2).replace('.', ',')}`;
-        document.getElementById('semanaCustosFixos').innerText = `R$ ${custosFixosTotalSemana.toFixed(2).replace('.', ',')}`;
-        document.getElementById('semanaManutencaoPagar').innerText = `R$ ${manutencaoPagarSemana.toFixed(2).replace('.', ',')}`;
-        document.getElementById('semanaDias').innerText = `${diasTrabalhadosCount} dias`;
-        document.getElementById('semanaMediaDia').innerText = diasTrabalhadosCount > 0 ? `R$ ${(liquidoTotalSemana / diasTrabalhadosCount).toFixed(2).replace('.', ',')}` : `R$ 0,00`;
-    };
-
-    window.abrirEdicaoSemanal = function(dataIso) {
-        let registro = memoriaHistorico.find(item => item.data === dataIso);
-        let painel = document.getElementById('painelEdicaoSemanal');
-        painel.style.display = 'block';
-        document.getElementById('editSemanaDataIso').value = dataIso;
-        document.getElementById('tituloEdicaoSemanal').innerText = `Editar Dia: ${dataIso.split('-').reverse().join('/')}`;
-
-        if(registro) {
-            document.getElementById('editSemanaBruto').value = registro.bruto || '';
-            document.getElementById('editSemanaKmIni').value = registro.kmInicial || '';
-            document.getElementById('editSemanaKmFim').value = registro.kmFinal || '';
-            document.getElementById('editSemanaHoras').value = registro.horasOnline || '';
-            document.getElementById('editSemanaRua').value = registro.gastosRua || '';
-            document.getElementById('editSemanaLitros').value = registro.litros || '';
-            document.getElementById('editSemanaValorAbast').value = registro.valorAbastecido || '';
-            document.getElementById('editSemanaIpva').value = registro.reservaIpva || 10;
-            document.getElementById('editSemanaManut').value = registro.reservaManutencao || 15;
-            document.getElementById('editSemanaCaixa').value = registro.reservaCaixinha || 10;
-            document.getElementById('btnExcluirDiaSemana').style.display = 'block';
-        } else {
-            document.getElementById('editSemanaBruto').value = '';
-            document.getElementById('editSemanaKmIni').value = '';
-            document.getElementById('editSemanaKmFim').value = '';
-            document.getElementById('editSemanaHoras').value = '';
-            document.getElementById('editSemanaRua').value = '';
-            document.getElementById('editSemanaLitros').value = '';
-            document.getElementById('editSemanaValorAbast').value = '';
-            document.getElementById('editSemanaIpva').value = '10.00';
-            document.getElementById('editSemanaManut').value = '15.00';
-            document.getElementById('editSemanaCaixa').value = '10.00';
-            document.getElementById('btnExcluirDiaSemana').style.display = 'none';
-        }
-    };
-
-    window.fecharEdicaoSemanal = function() {
-        document.getElementById('painelEdicaoSemanal').style.display = 'none';
-    };
-
-    window.salvarEdicaoSemanal = function() {
-        let dataIso = document.getElementById('editSemanaDataIso').value;
-        let bruto = parseFloat(document.getElementById('editSemanaBruto').value) || 0;
-        if(bruto <= 0) { alert("Informe o faturamento bruto."); return; }
-
-        let kmIni = parseFloat(document.getElementById('editSemanaKmIni').value) || 0;
-        let kmFim = parseFloat(document.getElementById('editSemanaKmFim').value) || 0;
-        let kmRodados = (kmFim > kmIni) ? (kmFim - kmIni) : 0;
-        let mediaKmLitro = 10;
-        let precoLitro = parseFloat(document.getElementById('precoLitro').value) || 4.09;
-        let valorAbast = parseFloat(document.getElementById('editSemanaValorAbast').value) || 0;
-        let litros = parseFloat(document.getElementById('editSemanaLitros').value) || 0;
-        let gastoCombustivel = valorAbast > 0 ? valorAbast : ((kmRodados / mediaKmLitro) * precoLitro);
-
-        let partes = dataIso.split('-');
-        let dataObj = new Date(partes[0], partes[1] - 1, partes[2]);
-        const diasSemana = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-
-        let dadosDia = {
-            id: 'dia_' + dataIso,
-            data: dataIso,
-            diaSemana: diasSemana[dataObj.getDay()],
-            bruto: bruto,
-            kmInicial: kmIni,
-            kmFinal: kmFim,
-            kmRodados: kmRodados,
-            horasOnline: parseFloat(document.getElementById('editSemanaHoras').value) || 0,
-            litros: litros,
-            valorAbastecido: valorAbast,
-            gastoCombustivel: gastoCombustivel,
-            gastosRua: parseFloat(document.getElementById('editSemanaRua').value) || 0,
-            custosFixos: getCustosFixosAtuais(),
-            reservaIpva: parseFloat(document.getElementById('editSemanaIpva').value) || 0,
-            reservaManutencao: parseFloat(document.getElementById('editSemanaManut').value) || 0,
-            reservaCaixinha: parseFloat(document.getElementById('editSemanaCaixa').value) || 0
-        };
-
-        memoriaHistorico = memoriaHistorico.filter(item => item.data !== dataIso);
-        memoriaHistorico.push(dadosDia);
-        memoriaHistorico.sort((a,b) => new Date(b.data) - new Date(a.data));
-
-        fecharEdicaoSemanal();
-        renderizarSemanal();
-        renderizarMensal();
-        renderizarHistorico();
-        salvarDadosNoServidor();
-        alert("Dia atualizado com sucesso!");
-    };
-
-    window.excluirDiaSemanal = function() {
-        let dataIso = document.getElementById('editSemanaDataIso').value;
-        if(confirm("Deseja realmente excluir os registros deste dia?")) {
-            memoriaHistorico = memoriaHistorico.filter(item => item.data !== dataIso);
-            fecharEdicaoSemanal();
-            renderizarSemanal();
-            renderizarMensal();
-            renderizarHistorico();
-            salvarDadosNoServidor();
-        }
-    };
-
-    window.renderizarMensal = function() {
-        let filtroMesVal = document.getElementById('filtroMesAno').value;
-        if(!filtroMesVal) return;
-        let [anoStr, mesStr] = filtroMesVal.split('-');
-        let ano = parseInt(anoStr);
-        let mes = parseInt(mesStr) - 1;
-
-        let primeiroDiaMes = new Date(ano, mes, 1);
-        let ultimoDiaMes = new Date(ano, mes + 1, 0);
-
-        let brutoMes = 0, liquidoMes = 0, kmMes = 0, horasMes = 0;
-        let ipvaMes = 0, manutMes = 0, caixinhaMes = 0, gasolinaMes = 0, custosFixosMes = 0;
-        let diasTrabalhadosMes = 0;
-
-        let registrosDoMes = memoriaHistorico.filter(item => {
-            let [iAno, iMes] = item.data.split('-').map(Number);
-            return iAno === ano && (iMes - 1) === mes;
-        });
-
-        registrosDoMes.forEach(item => {
-            diasTrabalhadosMes++;
-            brutoMes += item.bruto || 0;
-            kmMes += item.kmRodados || 0;
-            horasMes += item.horasOnline || 0;
-            ipvaMes += item.reservaIpva || 0;
-            manutMes += item.reservaManutencao || 0;
-            caixinhaMes += item.reservaCaixinha || 0;
-            gasolinaMes += item.gastoCombustivel || 0;
-            custosFixosMes += item.custosFixos || 0;
-
-            let liquidoDia = item.bruto - ((item.gastoCombustivel || 0) + (item.custosFixos || 0) + (item.gastosRua || 0) + (item.reservaIpva || 0) + (item.reservaManutencao || 0) + (item.reservaCaixinha || 0));
-            liquidoMes += liquidoDia;
-        });
-
-        let manutencaoPagarMes = 0;
-        memoriaManutencoes.forEach(m => {
-            if(m.parcelasPecaLista) {
-                m.parcelasPecaLista.forEach(p => {
-                    let [pAno, pMes] = p.vencimento.split('-').map(Number);
-                    if(pAno === ano && (pMes - 1) === mes) {
-                        manutencaoPagarMes += p.valor;
-                    }
-                });
-            }
-            if(m.parcelasObraLista) {
-                m.parcelasObraLista.forEach(p => {
-                    let [pAno, pMes] = p.vencimento.split('-').map(Number);
-                    if(pAno === ano && (pMes - 1) === mes) {
-                        manutencaoPagarMes += p.valor;
-                    }
-                });
-            }
-        });
-
-        let containerDias = document.getElementById('calendarDaysContainer');
-        if(containerDias) {
-            let htmlDias = '';
-            let diaDaSemanaInicio = primeiroDiaMes.getDay();
-            let offsetDias = (diaDaSemanaInicio === 0) ? 6 : diaDaSemanaInicio - 1;
-
-            for(let i=0; i<offsetDias; i++) {
-                htmlDias += `<div class="calendar-day-cell" style="opacity: 0.2; cursor: default;"></div>`;
-            }
-
-            let totalDiasNoMes = ultimoDiaMes.getDate();
-            for(let dia=1; dia<=totalDiasNoMes; dia++) {
-                let dIso = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-                let registroDia = registrosDoMes.find(item => item.data === dIso);
-                let workedClass = registroDia ? 'worked' : '';
-                let valStr = registroDia ? `R$ ${registroDia.bruto.toFixed(0)}` : '';
-
-                htmlDias += `
-                    <div class="calendar-day-cell ${workedClass}" onclick="abrirEdicaoMensal('${dIso}')">
-                        <span class="cal-day-num">${dia}</span>
-                        <span class="cal-day-val">${valStr}</span>
-                    </div>
-                `;
-            }
-            containerDias.innerHTML = htmlDias;
-        }
-
-        document.getElementById('mesBrutoGrande').innerText = `R$ ${brutoMes.toFixed(2).replace('.', ',')}`;
-        document.getElementById('mesLiquido').innerText = `R$ ${liquidoMes.toFixed(2).replace('.', ',')}`;
-        document.getElementById('mesKmTotal').innerText = `${kmMes} km`;
-        document.getElementById('mesValorKm').innerText = kmMes > 0 ? `R$ ${(brutoMes / kmMes).toFixed(2).replace('.', ',')}` : `R$ 0,00`;
-        document.getElementById('mesValorHr').innerText = horasMes > 0 ? `R$ ${(liquidoMes / horasMes).toFixed(2).replace('.', ',')}` : `R$ 0,00`;
-        document.getElementById('mesIpva').innerText = `R$ ${ipvaMes.toFixed(2).replace('.', ',')}`;
-        document.getElementById('mesManutencao').innerText = `R$ ${manutMes.toFixed(2).replace('.', ',')}`;
-        document.getElementById('mesCaixinha').innerText = `R$ ${caixinhaMes.toFixed(2).replace('.', ',')}`;
-        document.getElementById('mesGasolina').innerText = `R$ ${gasolinaMes.toFixed(2).replace('.', ',')}`;
-        document.getElementById('mesCustosFixos').innerText = `R$ ${custosFixosMes.toFixed(2).replace('.', ',')}`;
-        document.getElementById('mesManutencaoPagar').innerText = `R$ ${manutencaoPagarMes.toFixed(2).replace('.', ',')}`;
-        document.getElementById('mesDias').innerText = `${diasTrabalhadosMes} dias`;
-        document.getElementById('mesMediaDia').innerText = diasTrabalhadosMes > 0 ? `R$ ${(liquidoMes / diasTrabalhadosMes).toFixed(2).replace('.', ',')}` : `R$ 0,00`;
-    };
-
-    window.abrirEdicaoMensal = function(dataIso) {
-        let registro = memoriaHistorico.find(item => item.data === dataIso);
-        let painel = document.getElementById('painelEdicaoMensal');
-        painel.style.display = 'block';
-        document.getElementById('editMesDataIso').value = dataIso;
-        document.getElementById('tituloEdicaoMensal').innerText = `Editar Dia: ${dataIso.split('-').reverse().join('/')}`;
-
-        if(registro) {
-            document.getElementById('editMesBruto').value = registro.bruto || '';
-            document.getElementById('editMesKmIni').value = registro.kmInicial || '';
-            document.getElementById('editMesKmFim').value = registro.kmFinal || '';
-            document.getElementById('editMesHoras').value = registro.horasOnline || '';
-            document.getElementById('editMesRua').value = registro.gastosRua || '';
-            document.getElementById('editMesLitros').value = registro.litros || '';
-            document.getElementById('editMesValorAbast').value = registro.valorAbastecido || '';
-            document.getElementById('editMesIpva').value = registro.reservaIpva || 10;
-            document.getElementById('editMesManut').value = registro.reservaManutencao || 15;
-            document.getElementById('editMesCaixa').value = registro.reservaCaixinha || 10;
-            document.getElementById('btnExcluirDiaMensal').style.display = 'block';
-        } else {
-            document.getElementById('editMesBruto').value = '';
-            document.getElementById('editMesKmIni').value = '';
-            document.getElementById('editMesKmFim').value = '';
-            document.getElementById('editMesHoras').value = '';
-            document.getElementById('editMesRua').value = '';
-            document.getElementById('editMesLitros').value = '';
-            document.getElementById('editMesValorAbast').value = '';
-            document.getElementById('editMesIpva').value = '10.00';
-            document.getElementById('editMesManut').value = '15.00';
-            document.getElementById('editMesCaixa').value = '10.00';
-            document.getElementById('btnExcluirDiaMensal').style.display = 'none';
-        }
-    };
-
-    window.fecharEdicaoMensal = function() {
-        document.getElementById('painelEdicaoMensal').style.display = 'none';
-    };
-
-    window.salvarEdicaoMensalTab = function() {
-        let dataIso = document.getElementById('editMesDataIso').value;
-        let bruto = parseFloat(document.getElementById('editMesBruto').value) || 0;
-        if(bruto <= 0) { alert("Informe o faturamento bruto."); return; }
-
-        let kmIni = parseFloat(document.getElementById('editMesKmIni').value) || 0;
-        let kmFim = parseFloat(document.getElementById('editMesKmFim').value) || 0;
-        let kmRodados = (kmFim > kmIni) ? (kmFim - kmIni) : 0;
-        let mediaKmLitro = 10;
-        let precoLitro = parseFloat(document.getElementById('precoLitro').value) || 4.09;
-        let valorAbast = parseFloat(document.getElementById('editMesValorAbast').value) || 0;
-        let litros = parseFloat(document.getElementById('editMesLitros').value) || 0;
-        let gastoCombustivel = valorAbast > 0 ? valorAbast : ((kmRodados / mediaKmLitro) * precoLitro);
-
-        let partes = dataIso.split('-');
-        let dataObj = new Date(partes[0], partes[1] - 1, partes[2]);
-        const diasSemana = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-
-        let dadosDia = {
-            id: 'dia_' + dataIso,
-            data: dataIso,
-            diaSemana: diasSemana[dataObj.getDay()],
-            bruto: bruto,
-            kmInicial: kmIni,
-            kmFinal: kmFim,
-            kmRodados: kmRodados,
-            horasOnline: parseFloat(document.getElementById('editMesHoras').value) || 0,
-            litros: litros,
-            valorAbastecido: valorAbast,
-            gastoCombustivel: gastoCombustivel,
-            gastosRua: parseFloat(document.getElementById('editMesRua').value) || 0,
-            custosFixos: getCustosFixosAtuais(),
-            reservaIpva: parseFloat(document.getElementById('editMesIpva').value) || 0,
-            reservaManutencao: parseFloat(document.getElementById('editMesManut').value) || 0,
-            reservaCaixinha: parseFloat(document.getElementById('editMesCaixa').value) || 0
-        };
-
-        memoriaHistorico = memoriaHistorico.filter(item => item.data !== dataIso);
-        memoriaHistorico.push(dadosDia);
-        memoriaHistorico.sort((a,b) => new Date(b.data) - new Date(a.data));
-
-        fecharEdicaoMensal();
-        renderizarMensal();
-        renderizarSemanal();
-        renderizarHistorico();
-        salvarDadosNoServidor();
-        alert("Dia atualizado com sucesso!");
-    };
-
-    window.excluirDiaMensalTab = function() {
-        let dataIso = document.getElementById('editMesDataIso').value;
-        if(confirm("Deseja realmente excluir os registros deste dia?")) {
-            memoriaHistorico = memoriaHistorico.filter(item => item.data !== dataIso);
-            fecharEdicaoMensal();
-            renderizarMensal();
-            renderizarSemanal();
-            renderizarHistorico();
-            salvarDadosNoServidor();
-        }
-    };
-
-    window.editarHistorico = function(id) {
-        let item = memoriaHistorico.find(h => h.id === id);
-        if(!item) return;
-        mudarTab('diario');
-        document.getElementById('dataRegistro').value = item.data;
-        document.getElementById('diaSemana').value = item.diaSemana;
-        document.getElementById('bruto').value = item.bruto;
-        document.getElementById('kmInicial').value = item.kmInicial || '';
-        document.getElementById('kmFinal').value = item.kmFinal || '';
-        document.getElementById('horasOnline').value = item.horasOnline || 0;
-        document.getElementById('litros').value = item.litros || '';
-        document.getElementById('valorAbastecido').value = item.valorAbastecido || '';
-        document.getElementById('gastosRua').value = item.gastosRua || 0;
-        document.getElementById('reservaIpva').value = item.reservaIpva || 10;
-        document.getElementById('reservaManutencao').value = item.reservaManutencao || 15;
-        document.getElementById('reservaCaixinha').value = item.reservaCaixinha || 10;
-        document.getElementById('editIndex').value = item.id;
-        document.getElementById('btnSalvar').innerText = "Atualizar Dia no Histórico";
-        calcular();
-        window.scrollTo({top: 0, behavior: 'smooth'});
-    };
-
-    window.deletarHistorico = function(id) {
-        if(confirm("Deseja realmente excluir este registro do histórico?")) {
-            memoriaHistorico = memoriaHistorico.filter(h => h.id !== id);
-            renderizarHistorico();
-            renderizarSemanal();
-            renderizarMensal();
-            salvarDadosNoServidor();
-        }
-    };
 </script>
 </body>
 </html>
