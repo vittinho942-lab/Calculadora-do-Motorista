@@ -1165,6 +1165,36 @@
     const auth = firebase.auth();
     const provider = new firebase.auth.GoogleAuthProvider();
 
+    // === COLE ESSE BLOCO AQUI EMBAIXO ===
+    window.addEventListener('load', async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const statusPagamento = urlParams.get('status');
+        const planoEscolhido = urlParams.get('plano') || 'mensal';
+
+        if (statusPagamento === 'sucesso' || statusPagamento === 'approved') {
+            let user = auth.currentUser;
+            if (user) {
+                let diasValidade = 30;
+                if (planoEscolhido === 'semanal') diasValidade = 7;
+                if (planoEscolhido === 'anual') diasValidade = 365;
+
+                let dataExpiracao = new Date();
+                dataExpiracao.setDate(dataExpiracao.getDate() + diasValidade);
+
+                await db.collection("usuarios").doc(user.uid).set({
+                    assinaturaAtiva: true,
+                    nomePlano: planoEscolhido.charAt(0).toUpperCase() + planoEscolhido.slice(1),
+                    dataExpiracao: dataExpiracao.toISOString()
+                }, { merge: true });
+
+                alert("Pagamento confirmado! Seu acesso foi liberado com sucesso.");
+                window.history.replaceState({}, document.title, window.location.pathname);
+                location.reload();
+            }
+        }
+    });
+    // =====================================
+
     let contaBloqueadaGlobal = false;
     let ultimoJsonCarregado = null;
     let unsubscribeAssinatura = null;
@@ -1629,4 +1659,4 @@
     }
 </script>
 </body>
-</html>
+            </html>
