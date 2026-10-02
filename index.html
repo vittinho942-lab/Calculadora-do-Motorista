@@ -1393,7 +1393,7 @@
         }
     }
 
-    // Função de assinatura integrada com liberação automática imediata
+    // Função de assinatura atualizada para acumular/somar os dias corretamente
     async function assinar(planoSelecionado) {
         let user = auth.currentUser;
         if (!user) {
@@ -1412,14 +1412,30 @@
             nomePlano = "Anual";
         }
 
-        let dataExpiracao = new Date();
-        dataExpiracao.setDate(dataExpiracao.getDate() + diasAdicionais);
-
         try {
-            await db.collection("usuarios").doc(user.uid).set({
+            let userRef = db.collection("usuarios").doc(user.uid);
+            let docSnap = await userRef.get();
+            
+            let baseDate = new Date(); // Começa a contar de hoje por padrão
+            
+            if (docSnap.exists) {
+                let dados = docSnap.data();
+                if (dados.assinaturaAtiva && dados.dataExpiracao) {
+                    let expiracaoAtual = new Date(dados.dataExpiracao);
+                    // Se a assinatura ainda estiver válida no futuro, soma em cima dela. Senão, usa hoje.
+                    if (expiracaoAtual > baseDate) {
+                        baseDate = expiracaoAtual;
+                    }
+                }
+            }
+
+            // Adiciona os dias do novo plano escolhido à data base calculada
+            baseDate.setDate(baseDate.getDate() + diasAdicionais);
+
+            await userRef.set({
                 assinaturaAtiva: true,
                 nomePlano: nomePlano,
-                dataExpiracao: dataExpiracao.toISOString()
+                dataExpiracao: baseDate.toISOString()
             }, { merge: true });
 
             let telaBloqueio = document.getElementById('telaBloqueio');
