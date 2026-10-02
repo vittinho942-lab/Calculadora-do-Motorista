@@ -1062,10 +1062,9 @@
     let memoriaManutencoes = [];
     let memoriaConfig = { parcela: 1375, seguro: 0, diasMes: 26 };
     let semanaOffsetAtual = 0;
-    let unsubscribeFirestore = null; // Listener em tempo real do Firestore
+    let unsubscribeFirestore = null;
     const URL_API_PAGAMENTO = "https://script.google.com/macros/s/AKfycbwTVd7v61fqKPgqKXaDH28xWNjWZOKsJA9CLFJE7WKdGmC6-6fo71KGY3gHAModwnMUxw/exec";
 
-    // CORREÇÃO DAS ABAS
     function mudarTab(nomeTab) {
         const abas = ['diario', 'semana', 'mensal', 'config', 'manutencaoCarro', 'historico', 'planos'];
         abas.forEach(aba => {
@@ -1185,10 +1184,9 @@
         }
     });
 
-    // SINCRONIZAÇÃO EM TEMPO REAL COM O FIRESTORE (onSnapshot)
     function iniciarSincronizacaoTempoReal(uid) {
         if (unsubscribeFirestore) {
-            unsubscribeFirestore(); // Remove listener anterior se houver
+            unsubscribeFirestore();
         }
 
         let docRef = db.collection("usuarios").doc(uid);
@@ -1199,15 +1197,17 @@
                 if (dados.manutencoes) memoriaManutencoes = dados.manutencoes;
                 if (dados.config) {
                     memoriaConfig = dados.config;
-                    // Só atualiza os inputs se o usuário não estiver focado neles para não sobrescrever a digitação
                     if (document.activeElement.id !== 'cfgParcelaMensal') document.getElementById('cfgParcelaMensal').value = memoriaConfig.parcela;
                     if (document.activeElement.id !== 'cfgSeguroMensal') document.getElementById('cfgSeguroMensal').value = memoriaConfig.seguro;
                     if (document.activeElement.id !== 'cfgDiasMes') document.getElementById('cfgDiasMes').value = memoriaConfig.diasMes;
                 }
+                
+                // Atualiza status da assinatura dinamicamente a cada alteração no banco
+                verificarEAtualizarStatusAssinaturaFirestore(auth.currentUser);
+
                 atualizarValoresAutomaticosDia();
                 calcular();
                 
-                // Atualiza abas ativas se necessário
                 const abaAtual = document.querySelector('.tab-content.active');
                 if (abaAtual) {
                     if (abaAtual.id === 'tabSemana') renderizarSemanal();
@@ -1246,8 +1246,8 @@
             let emailEl = document.getElementById('menuEmailUsuario');
             if(emailEl) emailEl.innerText = user.email || "E-mail não informado";
 
-            await verificarEAtualizarStatusAssinaturaFirestore(user);
             await processarNovoUsuarioOuDispositivo(user);
+            await verificarEAtualizarStatusAssinaturaFirestore(user);
             iniciarSincronizacaoTempoReal(user.uid);
         } else {
             if(telaLogin) telaLogin.style.display = 'flex';
@@ -1441,7 +1441,6 @@
             return;
         }
 
-        // Ordena por data decrescente
         let historicoOrdenado = [...memoriaHistorico].sort((a,b) => new Date(b.data) - new Date(a.data));
 
         historicoOrdenado.forEach(item => {
@@ -1492,7 +1491,6 @@
     }
 
     function renderizarSemanal() {
-        // Implementação básica de renderização semanal
         let lbl = document.getElementById('semanaLabelIntervalo');
         if (lbl) lbl.innerText = "Semana Atual";
         let brutoTotal = memoriaHistorico.reduce((acc, cur) => acc + (cur.bruto || 0), 0);
