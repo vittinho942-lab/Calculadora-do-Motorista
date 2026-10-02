@@ -418,19 +418,8 @@
 </head>
 <body>
 
-<!-- TELA DE PAGAMENTO -->
-<div id="tela-pagamento" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(18,18,18,0.98); z-index: 9999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
-    <div style="background: var(--card-bg); border: 2px solid var(--primary-color); padding: 25px; border-radius: 12px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.8);">
-        <h2 style="color: var(--primary-color); margin-top: 0;">Aguardando Pagamento</h2>
-        <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 20px;">
-            Estamos verificando a aprovação do seu pagamento na planilha. Assim que for confirmado, sua tela será liberada automaticamente.
-        </p>
-        <button class="btn-action" onclick="verificarAcessoPagamento()">Verificar Novamente</button>
-    </div>
-</div>
-
 <!-- TELA DE LOGIN / AUTENTICAÇÃO -->
-<div id="telaLogin" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 10000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+<div id="telaLogin" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 10000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
     <div style="background: var(--card-bg); border: 2px solid var(--primary-color); padding: 25px; border-radius: 12px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.8);">
         <h2 style="color: var(--primary-color); margin-top: 0; margin-bottom: 6px;">Calculadora do Motorista</h2>
         <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 20px;">Faça login ou cadastre-se para acessar</p>
@@ -490,13 +479,15 @@
         <p style="color: #ccc; font-size: 0.95rem; margin-bottom: 20px;">
             Seu período gratuito acabou ou sua assinatura expirou. Para continuar utilizando a Calculadora do Motorista e ter controle total dos seus ganhos, escolha um plano abaixo:
         </p>
+        <!-- Elemento de status de pagamento adicionado para o retorno da InfinitePay -->
+        <div id="status-pagamento" style="color: var(--primary-color); font-weight: bold; margin-bottom: 15px; font-size: 0.9rem;"></div>
+        
         <button class="btn-action" onclick="mudarTab('planos'); document.getElementById('telaBloqueio').style.display = 'none';" style="margin-bottom: 10px;">Ver Planos e Assinar</button>
         <button class="btn-action" onclick="sairDaConta()" style="background: var(--input-bg); color: #fff;">Sair da Conta</button>
     </div>
 </div>
 
-<!-- BLOCO PRINCIPAL DA CALCULADORA -->
-<div class="container" id="conteudo-calculadora" style="display: none;">
+<div class="container" id="containerPrincipal" style="display: none;">
     <div class="header-top">
         <div style="position: relative;">
             <button class="menu-dots-btn plan-btn-style" onclick="toggleMenuDropdown()" style="padding: 6px 10px; margin: 0;">☰</button>
@@ -658,6 +649,9 @@
             <div style="font-size: 0.8rem; color: #aaa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Status Atual da Sua Conta</div>
             <div id="statusPlanoDias" style="font-size: 1.15rem; font-weight: bold; color: #fff;">Verificando dias restantes...</div>
         </div>
+
+        <!-- Status de pagamento na aba planos também, caso queira exibir lá -->
+        <div id="status-pagamento" style="color: var(--primary-color); font-weight: bold; text-align: center; margin-bottom: 10px; font-size: 0.9rem;"></div>
 
         <div class="pricing-card">
             <h3>Plano Semanal</h3>
@@ -1087,68 +1081,6 @@
     </div>
 </div>
 
-<!-- Função para verificar se o pagamento foi aprovado consultando o Google Sheets -->
-<script>
-function verificarAcessoPagamento() {
-    var urlDoScript = "https://script.google.com/macros/s/AKfycbwTVd7v61fqKPgqKXaDH28xWNjWZOKsJA9CLFJE7WKdGmC6-6fo71KGY3gHAModwnMUxw/exec";
-    
-    // Pega o ID da transação que o usuário digitou ou salvou no navegador
-    var idTransacao = localStorage.getItem("id_transacao_usuario") || "";
-
-    if (!idTransacao) {
-        console.log("Nenhum ID de transação encontrado.");
-        return;
-    }
-
-    // Faz a requisição para o Google Apps Script
-    fetch(urlDoScript + "?action=verificar&txid=" + idTransacao)
-      .then(response => response.json())
-      .then(data => {
-        if (data.autorizado === true) {
-            console.log("Acesso liberado pela planilha!");
-            
-            // Esconde a tela de pagamento
-            var telaPagamento = document.getElementById("tela-pagamento");
-            if (telaPagamento) telaPagamento.style.display = "none";
-            
-            // Mostra o conteúdo da calculadora
-            var conteudoCalc = document.getElementById("conteudo-calculadora");
-            if (conteudoCalc) conteudoCalc.style.display = "block";
-        } else {
-            console.log("Pagamento pendente ou não encontrado.");
-        }
-      })
-      .catch(error => {
-          console.error("Erro ao conectar com a planilha:", error);
-      });
-}
-
-// Roda a verificação assim que a página abrir juntamente com as demais inicializações
-window.onload = function() {
-    verificarAcessoPagamento();
-
-    let dataHoje = new Date();
-    let filtroMes = document.getElementById('filtroMesAno');
-    if(filtroMes) filtroMes.value = `${dataHoje.getFullYear()}-${String(dataHoje.getMonth() + 1).padStart(2, '0')}`;
-    let dataReg = document.getElementById('dataRegistro');
-    if(dataReg && !dataReg.value) dataReg.valueAsDate = new Date();
-    let vencPeca = document.getElementById('manutVencimentoPeca');
-    if(vencPeca && !vencPeca.value) vencPeca.valueAsDate = new Date();
-    let vencObra = document.getElementById('manutVencimentoObra');
-    if(vencObra && !vencObra.value) vencObra.valueAsDate = new Date();
-    
-    if (typeof atualizarDiaSemanaPorData === 'function') {
-        atualizarDiaSemanaPorData('dataRegistro', 'diaSemana');
-    }
-    if (typeof atualizarValoresAutomaticosDia === 'function') {
-        atualizarValoresAutomaticosDia();
-    }
-    if (typeof calcular === 'function') {
-        calcular();
-    }
-};
-</script>
-
 <!-- Módulo de verificação de versão em tempo real com Firestore -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1314,7 +1246,8 @@ window.onload = function() {
     let memoriaConfig = { parcela: 1375, seguro: 0, diasMes: 26 };
     let semanaOffsetAtual = 0;
 
-    const URL_API_PAGAMENTO = "https://script.google.com/macros/s/AKfycbxEXKRjd-L7Jqpfzk8MqRowgsvXo8Z0364DBm8CAhMFuOZzrLmsa8kohyQdKcx8Ab9I/exec";
+    // Link do Google Apps Script atualizado
+    const URL_API_PAGAMENTO = "https://script.google.com/macros/s/AKfycbwTVd7v61fqKPgqKXaDH28xWNjWZOKsJA9CLFJE7WKdGmC6-6fo71KGY3gHAModwnMUxw/exec";
 
     async function carregarDadosDoServidor(uid) {
         try {
@@ -1495,19 +1428,29 @@ window.onload = function() {
                 body: JSON.stringify({ plano: planoEscolhido, email: emailDoUsuario })
             });
             let dados = await resposta.json();
+            
+            let linkCheckoutFinal = "https://checkout.infinitepay.io/paulovictorrx7/GZtYH3OZso";
             if (dados.init_point) {
-                localStorage.setItem("aguardando_pagamento", "true");
-                
-                if (window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes("wv")) {
-                    window.open(dados.init_point, '_system');
-                } else {
-                    window.location.href = dados.init_point;
-                }
+                linkCheckoutFinal = dados.init_point;
+            }
+
+            // Salva um identificador do pedido fictício/atual ou obtido da resposta se houver
+            if (dados.idPedido) {
+                localStorage.setItem("id_pedido_atual", dados.idPedido);
             } else {
-                alert("Erro ao gerar pagamento. Tente novamente.");
+                // Fallback gerando um ID com base no e-mail e tempo atual se não vier pronto
+                localStorage.setItem("id_pedido_atual", emailDoUsuario + "_" + Date.now());
+            }
+            
+            localStorage.setItem("aguardando_pagamento", "true");
+            
+            if (window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes("wv")) {
+                window.open(linkCheckoutFinal, '_system');
+            } else {
+                window.location.href = linkCheckoutFinal;
             }
         } catch (erro) {
-            alert("Erro de conexão.");
+            window.location.href = "https://checkout.infinitepay.io/paulovictorrx7/GZtYH3OZso";
         }
     }
 
@@ -1516,7 +1459,7 @@ window.onload = function() {
         let emailUsuario = user ? user.email : localStorage.getItem("usuario_email");
         if (!emailUsuario) { alert("Por favor, certifique-se de estar logado."); return; }
         let statusEl = document.getElementById('statusPlanoDias');
-        if (statusEl) statusEl.innerHTML = `⏳ Gerando link para o plano ${planoSelecionado}, aguarde...`;
+        if (statusEl) statusEl.innerHTML = `⏳ A redirecionar para pagamento do plano ${planoSelecionado}...`;
         await iniciarPagamento(planoSelecionado, emailUsuario);
     }
 
@@ -1530,38 +1473,81 @@ window.onload = function() {
         if(selectEl) selectEl.value = diasSemana[dataObj.getDay()];
     };
 
-    async function verificarEAtualizarStatusAssinaturaFirestore(user) {
-        let docRef = db.collection("usuarios").doc(user.uid);
-        let docSnap = await docRef.get();
-        let dados = docSnap.exists ? docSnap.data() : {};
+    // ----------------------------------------------------
+    // INTEGRAÇÃO DO SCRIPT DE VERIFICAÇÃO DE PAGAMENTO INFINITEPAY
+    // ----------------------------------------------------
+    const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbwTVd7v61fqKPgqKXaDH28xWNjWZOKsJA9CLFJE7WKdGmC6-6fo71KGY3gHAModwnMUxw/exec";
 
-        let statusEl = document.getElementById('statusPlanoDias');
-        let menuTextoEl = document.getElementById('menuStatusTexto');
-        let telaBloqueio = document.getElementById('telaBloqueio');
-        let diasRestantes = 0, bloqueado = false;
+    async function verificarLiberacaoPagamento(idPedido) {
+        const elementoStatus = document.getElementById("status-pagamento"); 
+        
+        if (elementoStatus) {
+            elementoStatus.innerText = "Verificando se o pagamento foi aprovado...";
+        }
 
-        let agora = new Date();
+        try {
+            const resposta = await fetch(`${URL_APPS_SCRIPT}?idPedido=${idPedido}`);
+            const dados = await resposta.json();
 
-        if (!dados.assinaturaAtiva && !dados.primeiroAcesso) {
-            bloqueado = true;
-            if(statusEl) statusEl.innerHTML = `❌ Período de Teste Expirado`;
-            if(menuTextoEl) menuTextoEl.innerHTML = `❌ Teste Expirado`;
-        } 
-        else if (!dados.assinaturaAtiva) {
-            let dataPrimeiroAcesso = new Date(dados.primeiroAcesso);
-            let diffMilissegundos = agora - dataPrimeiroAcesso;
-            let diasPassados = Math.floor(diffMilissegundos / (1000 * 60 * 60 * 24));
-            
-            diasRestantes = isNaN(diasPassados) ? 0 : Math.max(0, 3 - diasPassados);
-            
-            if(statusEl) statusEl.innerHTML = `⏳ Teste Grátis: Restam <b>${diasRestantes} dia(s)</b>`;
-            if(menuTextoEl) menuTextoEl.innerHTML = `⏳ Teste Grátis (${diasRestantes} dias restantes)`;
-            
-            if (diasRestantes <= 0 || isNaN(diasPassados)) {
-                bloqueado = true;
+            if (dados.liberado) {
+                if (elementoStatus) {
+                    elementoStatus.innerText = "Pagamento aprovado com sucesso! Liberando acesso...";
+                }
+                
+                setTimeout(() => {
+                    if (typeof liberarAcessoNoApp === "function") {
+                        liberarAcessoNoApp();
+                    } else {
+                        location.reload(); 
+                    }
+                }, 1000);
+                
+            } else {
+                if (elementoStatus) {
+                    elementoStatus.innerText = "Aguardando a confirmação da InfinitePay...";
+                }
+                setTimeout(() => verificarLiberacaoPagamento(idPedido), 4000);
             }
+            
+        } catch (erro) {
+            console.error("Erro ao checar pagamento:", erro);
+            setTimeout(() => verificarLiberacaoPagamento(idPedido), 6000);
         }
     }
+
+    function liberarAcessoNoApp() {
+        localStorage.removeItem("aguardando_pagamento");
+        localStorage.removeItem("id_pedido_atual");
+        document.getElementById('telaBloqueio').style.display = 'none';
+        alert("🎉 Assinatura confirmada com sucesso! Bom trabalho.");
+        location.reload();
+    }
+
+    // Inicialização unificada ao carregar a página
+    window.onload = function() {
+        let dataHoje = new Date();
+        let filtroMes = document.getElementById('filtroMesAno');
+        if(filtroMes) filtroMes.value = `${dataHoje.getFullYear()}-${String(dataHoje.getMonth() + 1).padStart(2, '0')}`;
+        let dataReg = document.getElementById('dataRegistro');
+        if(dataReg && !dataReg.value) dataReg.valueAsDate = new Date();
+        let vencPeca = document.getElementById('manutVencimentoPeca');
+        if(vencPeca && !vencPeca.value) vencPeca.valueAsDate = new Date();
+        let vencObra = document.getElementById('manutVencimentoObra');
+        if(vencObra && !vencObra.value) vencObra.valueAsDate = new Date();
+        
+        atualizarDiaSemanaPorData('dataRegistro', 'diaSemana');
+        atualizarValoresAutomaticosDia();
+        calcular();
+
+        // Dispara a checagem automática caso haja um pedido aguardando retorno
+        const idPedidoSalvo = localStorage.getItem("id_pedido_atual");
+        if (idPedidoSalvo) {
+            // Exibe a tela de bloqueio com o status atualizado para que o usuário acompanhe a verificação
+            const telaBloqueio = document.getElementById('telaBloqueio');
+            if(telaBloqueio) telaBloqueio.style.display = 'flex';
+            verificarLiberacaoPagamento(idPedidoSalvo);
+        }
+    };
 </script>
 </body>
 </html>
