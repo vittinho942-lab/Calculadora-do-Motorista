@@ -1458,7 +1458,7 @@
 
         let confirmouPagamento = confirm(
             `Você será redirecionado para o ambiente de pagamento seguro (InfinitePay) para concluir a assinatura do Plano ${nomePlano}.\n\n` +
-            `⚠️️ IMPORTANTE: Assim que o pagamento for concluído com sucesso lá, clique em "OK" aqui para liberar os seus dias de acesso automaticamente!`
+            `⚠ IMPORTANTE: Assim que o pagamento for concluído com sucesso lá, clique em "OK" aqui para liberar os seus dias de acesso automaticamente!`
         );
 
         if (!confirmouPagamento) {
@@ -1490,6 +1490,8 @@
                 if (dados.assinaturaAtiva && dados.dataExpiracao) {
                     let expiracaoAtual = new Date(dados.dataExpiracao);
                     expiracaoAtual.setHours(0,0,0,0);
+                    // Se ainda restarem dias na assinatura atual, acumula a partir da data de término atual.
+                    // Caso contrário, começa a contar a partir de hoje.
                     if (expiracaoAtual > baseDate) {
                         baseDate = expiracaoAtual;
                     }
@@ -2230,85 +2232,95 @@
         let container = document.getElementById('listaHistorico');
         if (!container) return;
         container.innerHTML = '';
-        if (memoriaHistorico.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#777; font-size:0.85rem;">Nenhum histórico registrado.</p>';
+        
+        let historicoOrdenado = [...memoriaHistorico].sort((a,b) => new Date(b.data) - new Date(a.data));
+
+        if (historicoOrdenado.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#777; font-size:0.85rem;">Nenhum lançamento no histórico.</p>';
             return;
         }
 
-        let historicoOrdenado = [...memoriaHistorico].sort((a,b) => new Date(b.data) - new Date(a.data));
-
         historicoOrdenado.forEach(item => {
+            let dataFormatada = item.data.split('-').reverse().join('/');
+            let kmRod = (item.kmFinal > item.kmInicial) ? (item.kmFinal - item.kmInicial) : 0;
+            let custosFixos = (item.parcelaCarro || 0) + (item.seguroCarro || 0);
+            let totalDescontos = (item.valorAbastecido || 0) + (item.gastosRua || 0) + custosFixos + (item.reservaIpva || 0) + (item.reservaManutencao || 0) + (item.reservaCaixinha || 0);
+            let liquido = (item.bruto || 0) - totalDescontos;
+
             let div = document.createElement('div');
             div.className = 'sub-box';
-            let dataFormatada = item.data.split('-').reverse().join('/');
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <strong style="color:var(--primary-color);">${dataFormatada} (${item.diaSemana})</strong>
+                    <strong style="color:var(--primary-color);">${dataFormatada} (${item.diaSemana || 'Dia'})</strong>
                     <span style="color:#fff; font-weight:bold;">Bruto: R$ ${(item.bruto || 0).toFixed(2)}</span>
                 </div>
                 <div style="font-size:0.8rem; color:#aaa; margin-top:4px;">
-                    KM Rodados: ${(item.kmFinal > item.kmInicial) ? (item.kmFinal - item.kmInicial) : 0} km | Horas: ${item.horasOnline || 0}h
+                    KM Rodados: ${kmRod} km | Líquido: <b style="color:var(--primary-color);">R$ ${liquido.toFixed(2)}</b>
                 </div>
                 <div style="display:flex; gap:6px; margin-top:8px;">
-                    <button class="btn-sm btn-edit" onclick="carregarNoDiarioParaEdicao('${item.id}')">Editar</button>
-                    <button class="btn-sm btn-delete" onclick="excluirHistoricoItem('${item.id}')">Excluir</button>
+                    <button class="btn-sm btn-edit" onclick="editarRegistroHistorico('${item.data}')">Editar</button>
+                    <button class="btn-sm btn-delete" onclick="excluirRegistroHistorico('${item.data}')">Excluir</button>
                 </div>
             `;
             container.appendChild(div);
         });
     }
 
-    window.carregarNoDiarioParaEdicao = function(id) {
-        let item = memoriaHistorico.find(h => h.id === id);
-        if (!item) return;
-
-        document.getElementById('editIndex').value = item.id;
-        document.getElementById('dataRegistro').value = item.data || '';
-        document.getElementById('diaSemana').value = item.diaSemana || 'Segunda-feira';
-        document.getElementById('bruto').value = item.bruto || '';
-        document.getElementById('kmInicial').value = item.kmInicial || '';
-        document.getElementById('kmFinal').value = item.kmFinal || '';
-        document.getElementById('horasOnline').value = item.horasOnline || 0;
-        document.getElementById('litros').value = item.litros || '';
-        document.getElementById('valorAbastecido').value = item.valorAbastecido || '';
-        document.getElementById('gastosRua').value = item.gastosRua || '';
-        document.getElementById('reservaIpva').value = item.reservaIpva || 10;
-        document.getElementById('reservaManutencao').value = item.reservaManutencao || 15;
-        document.getElementById('reservaCaixinha').value = item.reservaCaixinha || 10;
-
+    window.editarRegistroHistorico = function(dataIso) {
         mudarTab('diario');
-        calcular();
+        document.getElementById('dataRegistro').value = dataIso;
+        atualizarDiaSemanaPorData('dataRegistro', 'diaSemana');
+        
+        let reg = memoriaHistorico.find(item => item.data === dataIso);
+        if (reg) {
+            document.getElementById('editIndex').value = reg.id;
+            document.getElementById('bruto').value = reg.bruto || '';
+            document.getElementById('kmInicial').value = reg.kmInicial || '';
+            document.getElementById('kmFinal').value = reg.kmFinal || '';
+            document.getElementById('horasOnline').value = reg.horasOnline || '';
+            document.getElementById('litros').value = reg.litros || '';
+            document.getElementById('valorAbastecido').value = reg.valorAbastecido || '';
+            document.getElementById('gastosRua').value = reg.gastosRua || '';
+            document.getElementById('reservaIpva').value = reg.reservaIpva || 10;
+            document.getElementById('reservaManutencao').value = reg.reservaManutencao || 15;
+            document.getElementById('reservaCaixinha').value = reg.reservaCaixinha || 10;
+            calcular();
+        }
     }
 
-    window.excluirHistoricoItem = async function(id) {
-        if (confirm("Deseja realmente excluir este dia do histórico?")) {
-            memoriaHistorico = memoriaHistorico.filter(h => h.id !== id);
+    window.excluirRegistroHistorico = async function(dataIso) {
+        if (confirm(`Deseja excluir o registro do dia ${dataIso.split('-').reverse().join('/')}?`)) {
+            memoriaHistorico = memoriaHistorico.filter(item => item.data !== dataIso);
             await salvarNoFirestore();
             renderizarHistorico();
         }
     }
 
-    let cronometroInterval = null;
+    let cronometroIntervalo = null;
     let segundosCronometro = 0;
-    let cronometrando = false;
+    let cronometroRodando = false;
 
     function toggleCronometro() {
         let btn = document.getElementById('btnChrono');
-        if (!cronometrando) {
-            cronometrando = true;
-            btn.innerText = "Parar";
-            btn.className = "btn-chrono btn-stop";
-            cronometroInterval = setInterval(() => {
+        if (!cronometroRodando) {
+            cronometroRodando = true;
+            btn.innerText = 'Parar';
+            btn.className = 'btn-chrono btn-stop';
+            
+            let horasAtual = parseFloat(document.getElementById('horasOnline').value) || 0;
+            segundosCronometro = Math.round(horasAtual * 3600);
+
+            cronometroIntervalo = setInterval(() => {
                 segundosCronometro++;
-                let horas = segundosCronometro / 3600;
-                document.getElementById('horasOnline').value = horas.toFixed(2);
+                let horasDecimais = segundosCronometro / 3600;
+                document.getElementById('horasOnline').value = horasDecimais.toFixed(2);
                 calcular();
             }, 1000);
         } else {
-            cronometrando = false;
-            btn.innerText = "Iniciar";
-            btn.className = "btn-chrono btn-start";
-            clearInterval(cronometroInterval);
+            cronometroRodando = false;
+            btn.innerText = 'Iniciar';
+            btn.className = 'btn-chrono btn-start';
+            clearInterval(cronometroIntervalo);
         }
     }
 </script>
