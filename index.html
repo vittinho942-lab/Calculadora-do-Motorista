@@ -1301,15 +1301,34 @@
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('status') === 'success') {
                 alert("🎉 Pagamento aprovado com sucesso! Bem-vindo à assinatura completa.");
-                let dataExpiracao = new Date();
-                dataExpiracao.setDate(dataExpiracao.getDate() + 30);
+                
+                let planoEscolhido = localStorage.getItem("plano_pendente") || "mensal";
+                let diasAdicionar = 30;
+                let nomePlanoStr = "Plano Mensal";
+                if (planoEscolhido === 'semanal') { diasAdicionar = 7; nomePlanoStr = "Plano Semanal"; }
+                else if (planoEscolhido === 'anual') { diasAdicionar = 365; nomePlanoStr = "Plano Anual"; }
+
+                let docRef = db.collection("usuarios").doc(user.uid);
+                let docSnap = await docRef.get();
+                let dadosUser = docSnap.exists ? docSnap.data() : {};
+                
+                let baseDate = new Date();
+                if (dadosUser.assinaturaAtiva && dadosUser.dataExpiracao) {
+                    let expAtual = new Date(dadosUser.dataExpiracao);
+                    if (expAtual > baseDate) {
+                        baseDate = expAtual; // Soma aos dias restantes se ainda estiver ativo!
+                    }
+                }
+                
+                baseDate.setDate(baseDate.getDate() + diasAdicionar);
                 
                 try {
-                    await db.collection("usuarios").doc(user.uid).set({
+                    await docRef.set({
                         assinaturaAtiva: true,
-                        nomePlano: "Plano Completo",
-                        dataExpiracao: dataExpiracao.toISOString()
+                        nomePlano: nomePlanoStr,
+                        dataExpiracao: baseDate.toISOString()
                     }, { merge: true });
+                    localStorage.removeItem("plano_pendente");
                     window.history.replaceState({}, document.title, window.location.pathname);
                 } catch (err) {
                     console.error("Erro ao atualizar assinatura pós-pagamento:", err);
@@ -1435,6 +1454,7 @@
         let user = auth.currentUser;
         let emailUsuario = user ? user.email : localStorage.getItem("usuario_email");
         if (!emailUsuario) { alert("Por favor, certifique-se de estar logado."); return; }
+        localStorage.setItem("plano_pendente", planoSelecionado);
         let statusEl = document.getElementById('statusPlanoDias');
         if (statusEl) statusEl.innerHTML = `⏳ Redirecionando para o pagamento do plano ${planoSelecionado}, aguarde...`;
         await iniciarPagamento(planoSelecionado, emailUsuario);
