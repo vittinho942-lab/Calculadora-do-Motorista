@@ -1490,7 +1490,7 @@
                 if (dados.assinaturaAtiva && dados.dataExpiracao) {
                     let expiracaoAtual = new Date(dados.dataExpiracao);
                     expiracaoAtual.setHours(0,0,0,0);
-                    // Acumula a partir da data de expiração atual se ela for posterior a hoje
+                    
                     if (expiracaoAtual > baseDate) {
                         baseDate = expiracaoAtual;
                     }
@@ -1779,170 +1779,192 @@
         memoriaConfig.diasMes = parseFloat(document.getElementById('cfgDiasMes').value) || 26;
         salvarNoFirestore();
         atualizarValoresAutomaticosDia();
-        calcular();
     }
 
-    let cronometroInterval = null;
-    let segundosOnline = 0;
-
-    function toggleCronometro() {
-        let btn = document.getElementById('btnChrono');
-        if (!cronometroInterval) {
-            btn.innerText = 'Parar';
-            btn.className = 'btn-chrono btn-stop';
-            cronometroInterval = setInterval(() => {
-                segundosOnline++;
-                let horasDecimais = (segundosOnline / 3600).toFixed(2);
-                document.getElementById('horasOnline').value = horasDecimais;
-                calcular();
-            }, 1000);
-        } else {
-            clearInterval(cronometroInterval);
-            cronometroInterval = null;
-            btn.innerText = 'Iniciar';
-            btn.className = 'btn-chrono btn-start';
-        }
+    function adicionarMeses(dataStr, meses) {
+        let partes = dataStr.split('-');
+        let d = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1 + meses, parseInt(partes[2]));
+        return d.toISOString().split('T')[0];
     }
 
-    function formatarDataIsoParaBr(isoStr) {
-        if (!isoStr) return "";
-        let partes = isoStr.split('-');
-        if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
-        return isoStr;
+    function obterParcelasManutencaoNoMes(anoMesStr) {
+        let totalMes = 0;
+        memoriaManutencoes.forEach(m => {
+            if (m.formaPeca === 'Crédito' && m.vencPeca && m.valPeca > 0) {
+                let valorParcela = m.valPeca / m.parcPeca;
+                for (let i = 0; i < m.parcPeca; i++) {
+                    let dataVencParc = adicionarMeses(m.vencPeca, i);
+                    if (dataVencParc.startsWith(anoMesStr)) {
+                        totalMes += valorParcela;
+                    }
+                }
+            }
+            if (m.formaObra === 'Crédito' && m.vencObra && m.valObra > 0) {
+                let valorParcela = m.valObra / m.parcObra;
+                for (let i = 0; i < m.parcObra; i++) {
+                    let dataVencParc = adicionarMeses(m.vencObra, i);
+                    if (dataVencParc.startsWith(anoMesStr)) {
+                        totalMes += valorParcela;
+                    }
+                }
+            }
+        });
+        return totalMes;
     }
 
-    function obterInicioFimSemanaPorOffset(offsetWeeks) {
+    function obterManutencoesNaSemana(inicioSemanaStr, fimSemanaStr) {
+        let totalSemana = 0;
+        let dIni = new Date(inicioSemanaStr + 'T00:00:00');
+        let dFim = new Date(fimSemanaStr + 'T23:59:59');
+
+        memoriaManutencoes.forEach(m => {
+            if (m.formaPeca === 'Crédito' && m.vencPeca && m.valPeca > 0) {
+                let valorParcela = m.valPeca / m.parcPeca;
+                for (let i = 0; i < m.parcPeca; i++) {
+                    let dataVencParcStr = adicionarMeses(m.vencPeca, i);
+                    let dVenc = new Date(dataVencParcStr + 'T00:00:00');
+                    if (dVenc >= dIni && dVenc <= dFim) {
+                        totalSemana += valorParcela;
+                    }
+                }
+            }
+            if (m.formaObra === 'Crédito' && m.vencObra && m.valObra > 0) {
+                let valorParcela = m.valObra / m.parcObra;
+                for (let i = 0; i < m.parcObra; i++) {
+                    let dataVencParcStr = adicionarMeses(m.vencObra, i);
+                    let dVenc = new Date(dataVencParcStr + 'T00:00:00');
+                    if (dVenc >= dIni && dVenc <= dFim) {
+                        totalSemana += valorParcela;
+                    }
+                }
+            }
+        });
+        return totalSemana;
+    }
+
+    function obterInicioFimSemana(offset) {
         let hoje = new Date();
-        hoje.setDate(hoje.getDate() + (offsetWeeks * 7));
+        hoje.setDate(hoje.getDate() + (offset * 7));
         let diaSem = hoje.getDay();
         let diffToMonday = hoje.getDate() - diaSem + (diaSem === 0 ? -6 : 1);
-        let monday = new Date(hoje.setDate(diffToMonday));
-        monday.setHours(0,0,0,0);
-
-        let sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        sunday.setHours(23,59,59,999);
-
-        return { inicio: monday, fim: sunday };
-    }
-
-    function mudarSemanaOffset(direcao) {
-        semanaOffsetAtual += direcao;
-        renderizarSemanal();
+        let segunda = new Date(hoje.setDate(diffToMonday));
+        let domingo = new Date(segunda);
+        domingo.setDate(segunda.getDate() + 6);
+        return {
+            segundaStr: segunda.toISOString().split('T')[0],
+            domingoStr: domingo.toISOString().split('T')[0],
+            segundaObj: segunda,
+            domingoObj: domingo
+        };
     }
 
     function renderizarSemanal() {
-        let intervalo = obterInicioFimSemanaPorOffset(semanaOffsetAtual);
-        let inicio = intervalo.inicio;
-        let fim = intervalo.fim;
+        let { segundaStr, domingoStr, segundaObj } = obterInicioFimSemana(semanaOffsetAtual);
+        let elLabel = document.getElementById('semanaLabelIntervalo');
+        let elBruto = document.getElementById('semanaBrutoGrande');
+        let elLiquido = document.getElementById('semanaLiquido');
+        let containerDias = document.getElementById('semanaBarrinhaDias');
 
-        let labelIntervalo = `${formatarDataIsoParaBr(inicio.toISOString().split('T')[0])} até ${formatarDataIsoParaBr(fim.toISOString().split('T')[0])}`;
-        document.getElementById('semanaLabelIntervalo').innerText = labelIntervalo;
+        if(!elLabel) return;
 
-        let semanaBruto = 0;
-        let semanaKm = 0;
-        let semanaHoras = 0;
-        let semanaIpva = 0;
-        let semanaManut = 0;
-        let semanaCaixinha = 0;
-        let semanaGasolina = 0;
-        let semanaCustosFixos = 0;
-        let semanaLiquido = 0;
-        let diasTrabCount = 0;
+        let dFimFormatada = new Date(domingoStr + 'T00:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+        let dIniFormatada = segundaObj.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+        elLabel.innerText = `${dIniFormatada} a ${dFimFormatada}`;
 
-        let diasDaSemanaObj = [];
-        let curr = new Date(inicio);
+        let diasDaSemanaArr = [];
+        let curr = new Date(segundaObj);
         for(let i=0; i<7; i++) {
-            let isoStr = curr.toISOString().split('T')[0];
-            diasDaSemanaObj.push({
-                dataIso: isoStr,
-                diaNum: curr.getDate(),
-                nomeDia: ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][i]
-            });
+            diasDaSemanaArr.push(curr.toISOString().split('T')[0]);
             curr.setDate(curr.getDate() + 1);
         }
 
-        let containerBarrinha = document.getElementById('semanaBarrinhaDias');
-        containerBarrinha.innerHTML = '';
+        let brutoTotal = 0, kmTotal = 0, horasTotal = 0, ipvaTotal = 0, manutTotal = 0, caixinhaTotal = 0, gasolinaTotal = 0, custosFixosTotal = 0, diasTrabalhados = 0;
 
-        diasDaSemanaObj.forEach(dObj => {
-            let registroDia = memoriaHistorico.find(h => h.data === dObj.dataIso);
+        containerDias.innerHTML = '';
+        const nomesDiasAbreviados = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+
+        diasDaSemanaArr.forEach((dataIso, index) => {
+            let registroDia = memoriaHistorico.find(item => item.data === dataIso);
             let cell = document.createElement('div');
             cell.className = 'calendar-day-cell';
-
-            if (registroDia) {
+            
+            let numDiaMes = dataIso.split('-')[2];
+            
+            if (registroDia && registroDia.bruto > 0) {
                 cell.classList.add('worked');
-                semanaBruto += registroDia.bruto || 0;
-                let kmi = registroDia.kmInicial || 0;
-                let kmf = registroDia.kmFinal || 0;
-                if(kmf > kmi) semanaKm += (kmf - kmi);
-                semanaHoras += registroDia.horasOnline || 0;
-                semanaIpva += registroDia.reservaIpva || 0;
-                semanaManut += registroDia.reservaManutencao || 0;
-                semanaCaixinha += registroDia.reservaCaixinha || 0;
-                semanaGasolina += registroDia.valorAbastecido || 0;
-                let cFixos = (registroDia.parcelaCarro || 0) + (registroDia.seguroCarro || 0);
-                semanaCustosFixos += cFixos;
-                let lqd = (registroDia.bruto || 0) - (registroDia.valorAbastecido || 0) - (registroDia.gastosRua || 0) - cFixos - (registroDia.reservaIpva || 0) - (registroDia.reservaManutencao || 0) - (registroDia.reservaCaixinha || 0);
-                semanaLiquido += lqd;
-                diasTrabCount++;
+                brutoTotal += (registroDia.bruto || 0);
+                let kmRod = (registroDia.kmFinal > registroDia.kmInicial) ? (registroDia.kmFinal - registroDia.kmInicial) : 0;
+                kmTotal += kmRod;
+                horasTotal += (registroDia.horasOnline || 0);
+                ipvaTotal += (registroDia.reservaIpva || 0);
+                manutTotal += (registroDia.reservaManutencao || 0);
+                caixinhaTotal += (registroDia.reservaCaixinha || 0);
+                gasolinaTotal += (registroDia.valorAbastecido || 0);
+                custosFixosTotal += ((registroDia.parcelaCarro || 0) + (registroDia.seguroCarro || 0));
+                diasTrabalhados++;
 
                 cell.innerHTML = `
-                    <div class="cal-day-num">${dObj.nomeDia} ${dObj.diaNum}</div>
-                    <div class="cal-day-val">R$ ${registroDia.bruto.toFixed(0)}</div>
+                    <div class="cal-day-num">${nomesDiasAbreviados[index]} ${numDiaMes}</div>
+                    <div class="cal-day-val">R$ ${Math.round(registroDia.bruto)}</div>
                 `;
             } else {
                 cell.innerHTML = `
-                    <div class="cal-day-num" style="color:#555;">${dObj.nomeDia} ${dObj.diaNum}</div>
+                    <div class="cal-day-num">${nomesDiasAbreviados[index]} ${numDiaMes}</div>
                     <div class="cal-day-val" style="color:#555;">-</div>
                 `;
             }
 
-            cell.onclick = () => abrirEdicaoSemanal(dObj.dataIso);
-            containerBarrinha.appendChild(cell);
+            cell.onclick = () => abrirEdicaoSemanal(dataIso);
+            containerDias.appendChild(cell);
         });
 
-        document.getElementById('semanaBrutoGrande').innerText = 'R$ ' + semanaBruto.toFixed(2);
-        document.getElementById('semanaLiquido').innerText = 'R$ ' + semanaLiquido.toFixed(2);
-        document.getElementById('semanaKmTotal').innerText = semanaKm + ' km';
-        document.getElementById('semanaValorKm').innerText = semanaKm > 0 ? 'R$ ' + (semanaBruto / semanaKm).toFixed(2) : 'R$ 0,00';
-        document.getElementById('semanaValorHr').innerText = semanaHoras > 0 ? 'R$ ' + (semanaLiquido / semanaHoras).toFixed(2) : 'R$ 0,00';
-        document.getElementById('semanaIpva').innerText = 'R$ ' + semanaIpva.toFixed(2);
-        document.getElementById('semanaManutencao').innerText = 'R$ ' + semanaManut.toFixed(2);
-        document.getElementById('semanaCaixinha').innerText = 'R$ ' + semanaCaixinha.toFixed(2);
-        document.getElementById('semanaGasolina').innerText = 'R$ ' + semanaGasolina.toFixed(2);
-        document.getElementById('semanaCustosFixos').innerText = 'R$ ' + semanaCustosFixos.toFixed(2);
-        document.getElementById('semanaDias').innerText = diasTrabCount + ' dias';
-        document.getElementById('semanaMediaDia').innerText = diasTrabCount > 0 ? 'R$ ' + (semanaLiquido / diasTrabCount).toFixed(2) : 'R$ 0,00';
+        let manutencaoPagarSemana = obterManutencoesNaSemana(segundaStr, domingoStr);
+        let totalDescontos = gasolinaTotal + custosFixosTotal + ipvaTotal + manutTotal + caixinhaTotal + manutencaoPagarSemana;
+        let liquidoTotal = brutoTotal - totalDescontos;
 
-        let manutPagarSemana = 0;
-        memoriaManutencoes.forEach(m => {
-            let total = (m.valPeca || 0) + (m.valObra || 0);
-            manutPagarSemana += total;
-        });
-        document.getElementById('semanaManutencaoPagar').innerText = 'R$ ' + manutPagarSemana.toFixed(2);
+        let valorPorKm = kmTotal > 0 ? (brutoTotal / kmTotal) : 0;
+        let valorPorHora = horasTotal > 0 ? (liquidoTotal / horasTotal) : 0;
+        let mediaLiquidaDia = diasTrabalhados > 0 ? (liquidoTotal / diasTrabalhados) : 0;
+
+        elBruto.innerText = 'R$ ' + brutoTotal.toFixed(2);
+        elLiquido.innerText = 'R$ ' + liquidoTotal.toFixed(2);
+        document.getElementById('semanaKmTotal').innerText = kmTotal + ' km';
+        document.getElementById('semanaValorKm').innerText = 'R$ ' + valorPorKm.toFixed(2);
+        document.getElementById('semanaValorHr').innerText = 'R$ ' + valorPorHora.toFixed(2) + ' /h';
+        document.getElementById('semanaIpva').innerText = 'R$ ' + ipvaTotal.toFixed(2);
+        document.getElementById('semanaManutencao').innerText = 'R$ ' + manutTotal.toFixed(2);
+        document.getElementById('semanaCaixinha').innerText = 'R$ ' + caixinhaTotal.toFixed(2);
+        document.getElementById('semanaGasolina').innerText = 'R$ ' + gasolinaTotal.toFixed(2);
+        document.getElementById('semanaCustosFixos').innerText = 'R$ ' + custosFixosTotal.toFixed(2);
+        document.getElementById('semanaManutencaoPagar').innerText = 'R$ ' + manutencaoPagarSemana.toFixed(2);
+        document.getElementById('semanaDias').innerText = diasTrabalhados + ' dias';
+        document.getElementById('semanaMediaDia').innerText = 'R$ ' + mediaLiquidaDia.toFixed(2);
+    }
+
+    function mudarSemanaOffset(valor) {
+        semanaOffsetAtual += valor;
+        renderizarSemanal();
     }
 
     function abrirEdicaoSemanal(dataIso) {
-        let painel = document.getElementById('painelEdicaoSemanal');
-        painel.style.display = 'block';
+        let registro = memoriaHistorico.find(item => item.data === dataIso);
+        document.getElementById('painelEdicaoSemanal').style.display = 'block';
         document.getElementById('editSemanaDataIso').value = dataIso;
-        document.getElementById('tituloEdicaoSemanal').innerText = `Editar Dia: ${formatarDataIsoParaBr(dataIso)}`;
-
-        let reg = memoriaHistorico.find(h => h.data === dataIso);
-        if (reg) {
-            document.getElementById('editSemanaBruto').value = reg.bruto || '';
-            document.getElementById('editSemanaKmIni').value = reg.kmInicial || '';
-            document.getElementById('editSemanaKmFim').value = reg.kmFinal || '';
-            document.getElementById('editSemanaHoras').value = reg.horasOnline || '';
-            document.getElementById('editSemanaRua').value = reg.gastosRua || '';
-            document.getElementById('editSemanaLitros').value = reg.litros || '';
-            document.getElementById('editSemanaValorAbast').value = reg.valorAbastecido || '';
-            document.getElementById('editSemanaParcelaCarro').value = reg.parcelaCarro || '';
-            document.getElementById('editSemanaSeguroCarro').value = reg.seguroCarro || '';
-            document.getElementById('editSemanaIpva').value = reg.reservaIpva || '';
-            document.getElementById('editSemanaManut').value = reg.reservaManutencao || '';
-            document.getElementById('editSemanaCaixinha').value = reg.reservaCaixinha || '';
+        document.getElementById('tituloEdicaoSemanal').innerText = `Editar Dia: ${dataIso.split('-').reverse().join('/')}`;
+        
+        if (registro) {
+            document.getElementById('editSemanaBruto').value = registro.bruto || '';
+            document.getElementById('editSemanaKmIni').value = registro.kmInicial || '';
+            document.getElementById('editSemanaKmFim').value = registro.kmFinal || '';
+            document.getElementById('editSemanaHoras').value = registro.horasOnline || '';
+            document.getElementById('editSemanaRua').value = registro.gastosRua || '';
+            document.getElementById('editSemanaLitros').value = registro.litros || '';
+            document.getElementById('editSemanaValorAbast').value = registro.valorAbastecido || '';
+            document.getElementById('editSemanaParcelaCarro').value = registro.parcelaCarro || '';
+            document.getElementById('editSemanaSeguroCarro').value = registro.seguroCarro || '';
+            document.getElementById('editSemanaIpva').value = registro.reservaIpva || '';
+            document.getElementById('editSemanaManut').value = registro.reservaManutencao || '';
+            document.getElementById('editSemanaCaixinha').value = registro.reservaCaixinha || '';
             document.getElementById('btnExcluirDiaSemana').style.display = 'block';
         } else {
             document.getElementById('editSemanaBruto').value = '';
@@ -1952,13 +1974,11 @@
             document.getElementById('editSemanaRua').value = '';
             document.getElementById('editSemanaLitros').value = '';
             document.getElementById('editSemanaValorAbast').value = '';
-            
             let diasMes = parseFloat(document.getElementById('cfgDiasMes').value) || 26;
-            let pDia = diasMes > 0 ? (memoriaConfig.parcela / diasMes) : 0;
-            let sDia = diasMes > 0 ? (memoriaConfig.seguro / diasMes) : 0;
-
-            document.getElementById('editSemanaParcelaCarro').value = pDia.toFixed(2);
-            document.getElementById('editSemanaSeguroCarro').value = sDia.toFixed(2);
+            let parcelaDia = diasMes > 0 ? (parseFloat(document.getElementById('cfgParcelaMensal').value) || 0) / diasMes : 0;
+            let seguroDia = diasMes > 0 ? (parseFloat(document.getElementById('cfgSeguroMensal').value) || 0) / diasMes : 0;
+            document.getElementById('editSemanaParcelaCarro').value = parcelaDia.toFixed(2);
+            document.getElementById('editSemanaSeguroCarro').value = seguroDia.toFixed(2);
             document.getElementById('editSemanaIpva').value = '10.00';
             document.getElementById('editSemanaManut').value = '15.00';
             document.getElementById('editSemanaCaixinha').value = '10.00';
@@ -1972,20 +1992,17 @@
 
     async function salvarEdicaoSemanal() {
         let dataIso = document.getElementById('editSemanaDataIso').value;
-        if(!dataIso) return;
+        if (!dataIso) return;
 
         let partes = dataIso.split('-');
         let dataObj = new Date(partes[0], partes[1] - 1, partes[2]);
         const diasSemana = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-        let nomeDiaSemana = diasSemana[dataObj.getDay()];
-
-        let regIndex = memoriaHistorico.findIndex(h => h.data === dataIso);
-        let regId = regIndex >= 0 ? memoriaHistorico[regIndex].id : 'reg_' + new Date().getTime();
+        let diaSemanaStr = diasSemana[dataObj.getDay()];
 
         let registro = {
-            id: regId,
+            id: 'reg_' + dataIso.replace(/-/g, ''),
             data: dataIso,
-            diaSemana: nomeDiaSemana,
+            diaSemana: diaSemanaStr,
             bruto: parseFloat(document.getElementById('editSemanaBruto').value) || 0,
             kmInicial: parseFloat(document.getElementById('editSemanaKmIni').value) || 0,
             kmFinal: parseFloat(document.getElementById('editSemanaKmFim').value) || 0,
@@ -2000,8 +2017,9 @@
             reservaCaixinha: parseFloat(document.getElementById('editSemanaCaixinha').value) || 0
         };
 
-        if (regIndex >= 0) {
-            memoriaHistorico[regIndex] = registro;
+        let index = memoriaHistorico.findIndex(item => item.data === dataIso);
+        if (index >= 0) {
+            memoriaHistorico[index] = registro;
         } else {
             memoriaHistorico.push(registro);
         }
@@ -2013,9 +2031,9 @@
 
     async function excluirDiaSemanal() {
         let dataIso = document.getElementById('editSemanaDataIso').value;
-        if(!dataIso) return;
-        if(confirm("Deseja excluir os dados deste dia?")) {
-            memoriaHistorico = memoriaHistorico.filter(h => h.data !== dataIso);
+        if (!dataIso) return;
+        if (confirm("Deseja realmente excluir os registros deste dia?")) {
+            memoriaHistorico = memoriaHistorico.filter(item => item.data !== dataIso);
             await salvarNoFirestore();
             fecharEdicaoSemanal();
             renderizarSemanal();
@@ -2024,127 +2042,120 @@
 
     function renderizarMensal() {
         let filtroInput = document.getElementById('filtroMesAno');
-        if(!filtroInput.value) {
+        if (!filtroInput) return;
+        
+        if (!filtroInput.value) {
             let hoje = new Date();
-            let mesStr = String(hoje.getMonth() + 1).padStart(2, '0');
-            filtroInput.value = `${hoje.getFullYear()}-${mesStr}`;
+            let ano = hoje.getFullYear();
+            let mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            filtroInput.value = `${ano}-${mes}`;
         }
 
-        let [anoFiltro, mesFiltro] = filtroInput.value.split('-').map(Number);
+        let anoMesStr = filtroInput.value;
+        let elBruto = document.getElementById('mesBrutoGrande');
+        let elLiquido = document.getElementById('mesLiquido');
+        let container = document.getElementById('calendarDaysContainer');
+        
+        let [anoSel, mesSel] = anoMesStr.split('-').map(Number);
+        
+        let primeiroDiaMes = new Date(anoSel, mesSel - 1, 1);
+        let ultimoDiaMes = new Date(anoSel, mesSel, 0);
+        let totalDiasMes = ultimoDiaMes.getDate();
+        
+        let brutoTotal = 0, kmTotal = 0, horasTotal = 0, ipvaTotal = 0, manutTotal = 0, caixinhaTotal = 0, gasolinaTotal = 0, custosFixosTotal = 0, diasTrabalhados = 0;
 
-        let mesBruto = 0;
-        let mesKm = 0;
-        let mesHoras = 0;
-        let mesIpva = 0;
-        let mesManut = 0;
-        let mesCaixinha = 0;
-        let mesGasolina = 0;
-        let mesCustosFixos = 0;
-        let mesLiquido = 0;
-        let diasTrabCount = 0;
-
-        let primeiroDiaMes = new Date(anoFiltro, mesFiltro - 1, 1);
-        let ultimoDiaMes = new Date(anoFiltro, mesFiltro, 0);
-
-        let containerCal = document.getElementById('calendarDaysContainer');
-        containerCal.innerHTML = '';
-
-        let diaSemanaInicio = primeiroDayOffset(primeiroDiaMes.getDay());
-        for(let i=0; i<diaSemanaInicio; i++) {
-            let emptyCell = document.createElement('div');
-            emptyCell.className = 'calendar-day-cell';
-            emptyCell.style.background = '#121212';
-            emptyCell.style.border = 'none';
-            emptyCell.style.cursor = 'default';
-            containerCal.appendChild(emptyCell);
+        container.innerHTML = '';
+        
+        let diaSemanaInicio = primeiroDiaMes.getDay();
+        let offsetVazios = diaSemanaInicio === 0 ? 6 : diaSemanaInicio - 1;
+        
+        for (let i = 0; i < offsetVazios; i++) {
+            let vazioCell = document.createElement('div');
+            vazioCell.className = 'calendar-day-cell';
+            vazioCell.style.background = '#181818';
+            vazioCell.style.opacity = '0.3';
+            vazioCell.style.cursor = 'default';
+            container.appendChild(vazioCell);
         }
 
-        for(let d=1; d<=ultimoDiaMes.getDate(); d++) {
-            let dataCorrente = new Date(anoFiltro, mesFiltro - 1, d);
-            let isoStr = dataCorrente.toISOString().split('T')[0];
+        for (let dia = 1; dia <= totalDiasMes; dia++) {
+            let diaStr = String(dia).padStart(2, '0');
+            let dataIso = `${anoSel}-${String(mesSel).padStart(2, '0')}-${diaStr}`;
+            let registroDia = memoriaHistorico.find(item => item.data === dataIso);
 
-            let registroDia = memoriaHistorico.find(h => h.data === isoStr);
             let cell = document.createElement('div');
             cell.className = 'calendar-day-cell';
 
-            if (registroDia) {
+            if (registroDia && registroDia.bruto > 0) {
                 cell.classList.add('worked');
-                mesBruto += registroDia.bruto || 0;
-                let kmi = registroDia.kmInicial || 0;
-                let kmf = registroDia.kmFinal || 0;
-                if(kmf > kmi) mesKm += (kmf - kmi);
-                mesHoras += registroDia.horasOnline || 0;
-                mesIpva += registroDia.reservaIpva || 0;
-                mesManut += registroDia.reservaManutencao || 0;
-                mesCaixinha += registroDia.reservaCaixinha || 0;
-                mesGasolina += registroDia.valorAbastecido || 0;
-                let cFixos = (registroDia.parcelaCarro || 0) + (registroDia.seguroCarro || 0);
-                mesCustosFixos += cFixos;
-                let lqd = (registroDia.bruto || 0) - (registroDia.valorAbastecido || 0) - (registroDia.gastosRua || 0) - cFixos - (registroDia.reservaIpva || 0) - (registroDia.reservaManutencao || 0) - (registroDia.reservaCaixinha || 0);
-                mesLiquido += lqd;
-                diasTrabCount++;
+                brutoTotal += (registroDia.bruto || 0);
+                let kmRod = (registroDia.kmFinal > registroDia.kmInicial) ? (registroDia.kmFinal - registroDia.kmInicial) : 0;
+                kmTotal += kmRod;
+                horasTotal += (registroDia.horasOnline || 0);
+                ipvaTotal += (registroDia.reservaIpva || 0);
+                manutTotal += (registroDia.reservaManutencao || 0);
+                caixinhaTotal += (registroDia.reservaCaixinha || 0);
+                gasolinaTotal += (registroDia.valorAbastecido || 0);
+                custosFixosTotal += ((registroDia.parcelaCarro || 0) + (registroDia.seguroCarro || 0));
+                diasTrabalhados++;
 
                 cell.innerHTML = `
-                    <div class="cal-day-num">${d}</div>
-                    <div class="cal-day-val">R$ ${registroDia.bruto.toFixed(0)}</div>
+                    <div class="cal-day-num">${dia}</div>
+                    <div class="cal-day-val">R$ ${Math.round(registroDia.bruto)}</div>
                 `;
             } else {
                 cell.innerHTML = `
-                    <div class="cal-day-num" style="color:#555;">${d}</div>
+                    <div class="cal-day-num">${dia}</div>
                     <div class="cal-day-val" style="color:#555;">-</div>
                 `;
             }
 
-            cell.onclick = () => abrirEdicaoMensalTab(isoStr);
-            containerCal.appendChild(cell);
+            cell.onclick = () => abrirEdicaoMensalTab(dataIso);
+            container.appendChild(cell);
         }
 
-        document.getElementById('mesBrutoGrande').innerText = 'R$ ' + mesBruto.toFixed(2);
-        document.getElementById('mesLiquido').innerText = 'R$ ' + mesLiquido.toFixed(2);
-        document.getElementById('mesKmTotal').innerText = mesKm + ' km';
-        document.getElementById('mesValorKm').innerText = mesKm > 0 ? 'R$ ' + (mesBruto / mesKm).toFixed(2) : 'R$ 0,00';
-        document.getElementById('mesValorHr').innerText = mesHoras > 0 ? 'R$ ' + (mesLiquido / mesHoras).toFixed(2) : 'R$ 0,00';
-        document.getElementById('mesIpva').innerText = 'R$ ' + mesIpva.toFixed(2);
-        document.getElementById('mesManutencao').innerText = 'R$ ' + mesManut.toFixed(2);
-        document.getElementById('mesCaixinha').innerText = 'R$ ' + mesCaixinha.toFixed(2);
-        document.getElementById('mesGasolina').innerText = 'R$ ' + mesGasolina.toFixed(2);
-        document.getElementById('mesCustosFixos').innerText = 'R$ ' + mesCustosFixos.toFixed(2);
-        document.getElementById('mesDias').innerText = diasTrabCount + ' dias';
-        document.getElementById('mesMediaDia').innerText = diasTrabCount > 0 ? 'R$ ' + (mesLiquido / diasTrabCount).toFixed(2) : 'R$ 0,00';
+        let manutencaoPagarMes = obterParcelasManutencaoNoMes(anoMesStr);
+        let totalDescontos = gasolinaTotal + custosFixosTotal + ipvaTotal + manutTotal + caixinhaTotal + manutencaoPagarMes;
+        let liquidoTotal = brutoTotal - totalDescontos;
 
-        let manutPagarMes = 0;
-        memoriaManutencoes.forEach(m => {
-            let total = (m.valPeca || 0) + (m.valObra || 0);
-            manutPagarMes += total;
-        });
-        document.getElementById('mesManutencaoPagar').innerText = 'R$ ' + manutPagarMes.toFixed(2);
-    }
+        let valorPorKm = kmTotal > 0 ? (brutoTotal / kmTotal) : 0;
+        let valorPorHora = horasTotal > 0 ? (liquidoTotal / horasTotal) : 0;
+        let mediaLiquidaDia = diasTrabalhados > 0 ? (liquidoTotal / diasTrabalhados) : 0;
 
-    function primeiroDayOffset(jsDay) {
-        if (jsDay === 0) return 6; 
-        return jsDay - 1; 
+        elBruto.innerText = 'R$ ' + brutoTotal.toFixed(2);
+        elLiquido.innerText = 'R$ ' + liquidoTotal.toFixed(2);
+        document.getElementById('mesKmTotal').innerText = kmTotal + ' km';
+        document.getElementById('mesValorKm').innerText = 'R$ ' + valorPorKm.toFixed(2);
+        document.getElementById('mesValorHr').innerText = 'R$ ' + valorPorHora.toFixed(2) + ' /h';
+        document.getElementById('mesIpva').innerText = 'R$ ' + ipvaTotal.toFixed(2);
+        document.getElementById('mesManutencao').innerText = 'R$ ' + manutTotal.toFixed(2);
+        document.getElementById('mesCaixinha').innerText = 'R$ ' + caixinhaTotal.toFixed(2);
+        document.getElementById('mesGasolina').innerText = 'R$ ' + gasolinaTotal.toFixed(2);
+        document.getElementById('mesCustosFixos').innerText = 'R$ ' + custosFixosTotal.toFixed(2);
+        document.getElementById('mesManutencaoPagar').innerText = 'R$ ' + manutencaoPagarMes.toFixed(2);
+        document.getElementById('mesDias').innerText = diasTrabalhados + ' dias';
+        document.getElementById('mesMediaDia').innerText = 'R$ ' + mediaLiquidaDia.toFixed(2);
     }
 
     function abrirEdicaoMensalTab(dataIso) {
-        let painel = document.getElementById('painelEdicaoMensal');
-        painel.style.display = 'block';
+        let registro = memoriaHistorico.find(item => item.data === dataIso);
+        document.getElementById('painelEdicaoMensal').style.display = 'block';
         document.getElementById('editMesDataIso').value = dataIso;
-        document.getElementById('tituloEdicaoMensal').innerText = `Editar Dia: ${formatarDataIsoParaBr(dataIso)}`;
-
-        let reg = memoriaHistorico.find(h => h.data === dataIso);
-        if (reg) {
-            document.getElementById('editMesBruto').value = reg.bruto || '';
-            document.getElementById('editMesKmIni').value = reg.kmInicial || '';
-            document.getElementById('editMesKmFim').value = reg.kmFinal || '';
-            document.getElementById('editMesHoras').value = reg.horasOnline || '';
-            document.getElementById('editMesRua').value = reg.gastosRua || '';
-            document.getElementById('editMesLitros').value = reg.litros || '';
-            document.getElementById('editMesValorAbast').value = reg.valorAbastecido || '';
-            document.getElementById('editMesParcelaCarro').value = reg.parcelaCarro || '';
-            document.getElementById('editMesSeguroCarro').value = reg.seguroCarro || '';
-            document.getElementById('editMesIpva').value = reg.reservaIpva || '';
-            document.getElementById('editMesManut').value = reg.reservaManutencao || '';
-            document.getElementById('editMesCaixinha').value = reg.reservaCaixinha || '';
+        document.getElementById('tituloEdicaoMensal').innerText = `Editar Dia: ${dataIso.split('-').reverse().join('/')}`;
+        
+        if (registro) {
+            document.getElementById('editMesBruto').value = registro.bruto || '';
+            document.getElementById('editMesKmIni').value = registro.kmInicial || '';
+            document.getElementById('editMesKmFim').value = registro.kmFinal || '';
+            document.getElementById('editMesHoras').value = registro.horasOnline || '';
+            document.getElementById('editMesRua').value = registro.gastosRua || '';
+            document.getElementById('editMesLitros').value = registro.litros || '';
+            document.getElementById('editMesValorAbast').value = registro.valorAbastecido || '';
+            document.getElementById('editMesParcelaCarro').value = registro.parcelaCarro || '';
+            document.getElementById('editMesSeguroCarro').value = registro.seguroCarro || '';
+            document.getElementById('editMesIpva').value = registro.reservaIpva || '';
+            document.getElementById('editMesManut').value = registro.reservaManutencao || '';
+            document.getElementById('editMesCaixinha').value = registro.reservaCaixinha || '';
             document.getElementById('btnExcluirDiaMensal').style.display = 'block';
         } else {
             document.getElementById('editMesBruto').value = '';
@@ -2154,13 +2165,11 @@
             document.getElementById('editMesRua').value = '';
             document.getElementById('editMesLitros').value = '';
             document.getElementById('editMesValorAbast').value = '';
-            
             let diasMes = parseFloat(document.getElementById('cfgDiasMes').value) || 26;
-            let pDia = diasMes > 0 ? (memoriaConfig.parcela / diasMes) : 0;
-            let sDia = diasMes > 0 ? (memoriaConfig.seguro / diasMes) : 0;
-
-            document.getElementById('editMesParcelaCarro').value = pDia.toFixed(2);
-            document.getElementById('editMesSeguroCarro').value = sDia.toFixed(2);
+            let parcelaDia = diasMes > 0 ? (parseFloat(document.getElementById('cfgParcelaMensal').value) || 0) / diasMes : 0;
+            let seguroDia = diasMes > 0 ? (parseFloat(document.getElementById('cfgSeguroMensal').value) || 0) / diasMes : 0;
+            document.getElementById('editMesParcelaCarro').value = parcelaDia.toFixed(2);
+            document.getElementById('editMesSeguroCarro').value = seguroDia.toFixed(2);
             document.getElementById('editMesIpva').value = '10.00';
             document.getElementById('editMesManut').value = '15.00';
             document.getElementById('editMesCaixinha').value = '10.00';
@@ -2174,20 +2183,17 @@
 
     async function salvarEdicaoMensalTab() {
         let dataIso = document.getElementById('editMesDataIso').value;
-        if(!dataIso) return;
+        if (!dataIso) return;
 
         let partes = dataIso.split('-');
         let dataObj = new Date(partes[0], partes[1] - 1, partes[2]);
         const diasSemana = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-        let nomeDiaSemana = diasSemana[dataObj.getDay()];
-
-        let regIndex = memoriaHistorico.findIndex(h => h.data === dataIso);
-        let regId = regIndex >= 0 ? memoriaHistorico[regIndex].id : 'reg_' + new Date().getTime();
+        let diaSemanaStr = diasSemana[dataObj.getDay()];
 
         let registro = {
-            id: regId,
+            id: 'reg_' + dataIso.replace(/-/g, ''),
             data: dataIso,
-            diaSemana: nomeDiaSemana,
+            diaSemana: diaSemanaStr,
             bruto: parseFloat(document.getElementById('editMesBruto').value) || 0,
             kmInicial: parseFloat(document.getElementById('editMesKmIni').value) || 0,
             kmFinal: parseFloat(document.getElementById('editMesKmFim').value) || 0,
@@ -2202,8 +2208,9 @@
             reservaCaixinha: parseFloat(document.getElementById('editMesCaixinha').value) || 0
         };
 
-        if (regIndex >= 0) {
-            memoriaHistorico[regIndex] = registro;
+        let index = memoriaHistorico.findIndex(item => item.data === dataIso);
+        if (index >= 0) {
+            memoriaHistorico[index] = registro;
         } else {
             memoriaHistorico.push(registro);
         }
@@ -2215,9 +2222,9 @@
 
     async function excluirDiaMensalTab() {
         let dataIso = document.getElementById('editMesDataIso').value;
-        if(!dataIso) return;
-        if(confirm("Deseja excluir os dados deste dia?")) {
-            memoriaHistorico = memoriaHistorico.filter(h => h.data !== dataIso);
+        if (!dataIso) return;
+        if (confirm("Deseja realmente excluir os registros deste dia?")) {
+            memoriaHistorico = memoriaHistorico.filter(item => item.data !== dataIso);
             await salvarNoFirestore();
             fecharEdicaoMensal();
             renderizarMensal();
@@ -2226,68 +2233,48 @@
 
     function renderizarHistorico() {
         let container = document.getElementById('listaHistorico');
-        if(!container) return;
+        if (!container) return;
         container.innerHTML = '';
-
-        if(memoriaHistorico.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#777; font-size:0.85rem;">Nenhum dia lançado no histórico.</p>';
+        if (memoriaHistorico.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#777; font-size:0.85rem;">Nenhum histórico registrado.</p>';
             return;
         }
 
-        let historicoOrdenado = [...memoriaHistorico].sort((a,b) => new Date(b.data) - new Date(a.data));
+        let historicoOrdenado = [...memoriaHistorico].sort((a, b) => new Date(b.data) - new Date(a.data));
 
-        historicoOrdenado.forEach(h => {
+        historicoOrdenado.forEach(item => {
+            let dataFormatada = item.data ? item.data.split('-').reverse().join('/') : '';
             let div = document.createElement('div');
             div.className = 'sub-box';
-            let cFixos = (h.parcelaCarro || 0) + (h.seguroCarro || 0);
-            let liquido = (h.bruto || 0) - (h.valorAbastecido || 0) - (h.gastosRua || 0) - cFixos - (h.reservaIpva || 0) - (h.reservaManutencao || 0) - (h.reservaCaixinha || 0);
-
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <strong style="color:var(--primary-color);">${formatarDataIsoParaBr(h.data)} (${h.diaSemana})</strong>
-                    <span style="color:#fff; font-weight:bold;">Bruto: R$ ${(h.bruto || 0).toFixed(2)}</span>
+                    <strong style="color:var(--primary-color);">${dataFormatada} (${item.diaSemana || ''})</strong>
+                    <span style="color:#fff; font-weight:bold;">R$ ${(item.bruto || 0).toFixed(2)}</span>
                 </div>
                 <div style="font-size:0.8rem; color:#aaa; margin-top:4px;">
-                    Líquido: <b style="color:var(--primary-color);">R$ ${liquido.toFixed(2)}</b> | KM: ${(h.kmFinal > h.kmInicial) ? (h.kmFinal - h.kmInicial) : 0} km | Horas: ${h.horasOnline || 0}h
+                    KM Rodados: ${(item.kmFinal > item.kmInicial) ? (item.kmFinal - item.kmInicial) : 0} km | Horas: ${item.horasOnline || 0}h
                 </div>
                 <div style="display:flex; gap:6px; margin-top:8px;">
-                    <button class="btn-sm btn-edit" onclick="carregarEdicaoDiario('${h.id}')">Carregar no Diário</button>
-                    <button class="btn-sm btn-delete" onclick="excluirHistorico('${h.id}')">Excluir</button>
+                    <button class="btn-sm btn-edit" onclick="editarHistoricoGeral('${item.data}')">Editar</button>
+                    <button class="btn-sm btn-delete" onclick="excluirHistoricoGeral('${item.data}')">Excluir</button>
                 </div>
             `;
             container.appendChild(div);
         });
     }
 
-    window.carregarEdicaoDiario = function(id) {
-        let h = memoriaHistorico.find(item => item.id === id);
-        if(!h) return;
-        document.getElementById('editIndex').value = h.id;
-        document.getElementById('dataRegistro').value = h.data || '';
-        document.getElementById('diaSemana').value = h.diaSemana || 'Segunda-feira';
-        document.getElementById('bruto').value = h.bruto || '';
-        document.getElementById('kmInicial').value = h.kmInicial || '';
-        document.getElementById('kmFinal').value = h.kmFinal || '';
-        document.getElementById('horasOnline').value = h.horasOnline || '0.00';
-        document.getElementById('litros').value = h.litros || '';
-        document.getElementById('valorAbastecido').value = h.valorAbastecido || '';
-        document.getElementById('gastosRua').value = h.gastosRua || '';
-        document.getElementById('reservaIpva').value = h.reservaIpva || '10.00';
-        document.getElementById('reservaManutencao').value = h.reservaManutencao || '15.00';
-        document.getElementById('reservaCaixinha').value = h.reservaCaixinha || '10.00';
-        
-        calcular();
-        mudarTabComVerificacao('diario');
+    window.editarHistoricoGeral = function(dataIso) {
+        mudarTab('semana');
+        abrirEdicaoSemanal(dataIso);
     }
 
-    window.excluirHistorico = async function(id) {
-        if(confirm("Deseja realmente excluir este registro do histórico?")) {
-            memoriaHistorico = memoriaHistorico.filter(item => item.id !== id);
+    window.excluirHistoricoGeral = async function(dataIso) {
+        if (confirm("Deseja excluir este registro do histórico?")) {
+            memoriaHistorico = memoriaHistorico.filter(item => item.data !== dataIso);
             await salvarNoFirestore();
             renderizarHistorico();
         }
     }
 </script>
-
 </body>
-        </html>
+</html>
