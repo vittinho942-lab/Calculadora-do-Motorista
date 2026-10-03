@@ -813,7 +813,7 @@
             <div id="semanaBrutoGrande" class="mensal-hero-value">R$ 0,00</div>
             
             <div style="font-size: 0.7rem; color: var(--edit-color); text-align: center; margin-bottom: 4px; font-weight: bold;">
-                Calendário da Semana (Segunda a Domingo - Toque para Editar):
+                Calendário da Semana (Segunda a Domingo):
             </div>
             
             <div class="calendar-grid" style="grid-template-columns: repeat(7, 1fr); margin-top: 8px;" id="semanaBarrinhaDias">
@@ -883,7 +883,7 @@
             <div id="mesBrutoGrande" class="mensal-hero-value">R$ 0,00</div>
             
             <div style="font-size: 0.7rem; color: var(--edit-color); text-align: center; margin-bottom: 4px; font-weight: bold;">
-                Calendário do Mês (Segunda a Domingo - Toque para Editar):
+                Calendário do Mês (Segunda a Domingo):
             </div>
             
             <div class="calendar-grid">
@@ -937,7 +937,7 @@
                 <h4 id="mesCustosFixos">R$ 0,00</h4>
             </div>
             <div class="mensal-mini-card manutencao-total" style="grid-column: span 2;">
-                <span>Manutenção a Pagar no Mês (Crédito ou Parcelado)</span>
+                <span>Manutenção a Pagar no Mês</span>
                 <h4 id="mesManutencaoPagar">R$ 0,00</h4>
             </div>
         </div>
@@ -982,33 +982,28 @@
     let memoriaHistorico = [];
     let memoriaManutencoes = [];
     let memoriaConfig = { parcela: 1375, seguro: 0, diasMes: 26 };
-    let memoriaAssinatura = { plano: 'gratuito', expiraEm: null };
+    let memoriaAssinatura = { plano: 'mensal', expiraEm: new Date().getTime() + (30 * 24 * 60 * 60 * 1000) };
     let semanaOffsetAtual = 0;
     let usuarioBloqueadoGeral = false;
     let cronometroInterval = null;
     let cronometroSegundos = 0;
     let cronometroRodando = false;
 
-    // VERIFICAÇÃO DE HORA OFICIAL DA REDE (ANTI-FRAUDE DE DATA)
     async function verificarDataRealRede() {
         try {
             let response = await fetch('https://worldtimeapi.org/api/ip', { cache: 'no-store' });
             if (response.ok) {
                 let data = await response.json();
-                let dataOficialStr = data.datetime.substring(0, 10); // YYYY-MM-DD
+                let dataOficialStr = data.datetime.substring(0, 10);
                 let dataCelularStr = new Date().toISOString().substring(0, 10);
-                
                 if (dataOficialStr !== dataCelularStr) {
                     document.getElementById('modalAlertaData').style.display = 'flex';
                     throw new Error("Data do dispositivo adulterada.");
                 }
             }
-        } catch (e) {
-            // Se falhar a API por falta de internet, usa tolerância básica, mas o app continua funcional
-        }
+        } catch (e) {}
     }
 
-    // AUTENTICAÇÃO E CARREGAMENTO DE DADOS DO FIRESTORE POR UID
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             document.getElementById('telaLogin').style.display = 'none';
@@ -1042,9 +1037,7 @@
     }
 
     function sairDaConta() {
-        auth.signOut().then(() => {
-            location.reload();
-        });
+        auth.signOut().then(() => { location.reload(); });
     }
 
     function abrirModalEsqueciSenha() { document.getElementById('modalEsqueciSenha').style.display = 'flex'; }
@@ -1058,7 +1051,6 @@
         }).catch(err => alert("Erro: " + err.message));
     }
 
-    // CARREGAR DADOS DA NUVEM (FIRESTORE) VINCULADOS AO USUÁRIO
     async function carregarDadosDoFirestore(uid) {
         try {
             let docRef = db.collection('motoristas').doc(uid);
@@ -1069,18 +1061,21 @@
                 memoriaHistorico = dados.historico || [];
                 memoriaManutencoes = dados.manutencoes || [];
                 memoriaConfig = dados.config || { parcela: 1375, seguro: 0, diasMes: 26 };
-                memoriaAssinatura = dados.assinatura || { plano: 'gratuito', expiraEm: null };
+                if (dados.assinatura && dados.assinatura.expiraEm) {
+                    memoriaAssinatura = dados.assinatura;
+                } else {
+                    memoriaAssinatura = { plano: 'mensal', expiraEm: new Date().getTime() + (30 * 24 * 60 * 60 * 1000) };
+                }
             } else {
-                // Criar documento inicial para o novo usuário
+                memoriaAssinatura = { plano: 'mensal', expiraEm: new Date().getTime() + (30 * 24 * 60 * 60 * 1000) };
                 await docRef.set({
                     historico: [],
                     manutencoes: [],
                     config: memoriaConfig,
-                    assinatura: { plano: 'gratuito', expiraEm: null }
+                    assinatura: memoriaAssinatura
                 });
             }
 
-            // Popular inputs de config
             document.getElementById('cfgParcelaMensal').value = memoriaConfig.parcela;
             document.getElementById('cfgSeguroMensal').value = memoriaConfig.seguro;
             document.getElementById('cfgDiasMes').value = memoriaConfig.diasMes;
@@ -1094,7 +1089,6 @@
         }
     }
 
-    // SALVAR DADOS NA NUVEM VINCULADOS AO UID DO USUÁRIO
     function salvarNoFirestore() {
         let user = auth.currentUser;
         if (!user) return;
@@ -1108,7 +1102,6 @@
         }, { merge: true }).catch(err => console.error("Erro ao salvar no Firestore:", err));
     }
 
-    // VERIFICAÇÃO DE ASSINATURA E BLOQUEIO
     function verificarStatusAssinatura() {
         let textoStatus = document.getElementById('menuStatusTexto');
         let statusDias = document.getElementById('statusPlanoDias');
@@ -1150,7 +1143,7 @@
         
         salvarNoFirestore();
         verificarStatusAssinatura();
-        alert("Plano simulado ativado com sucesso! Aproveite.");
+        alert("Plano ativado com sucesso!");
         mudarTab('diario');
     }
 
@@ -1329,8 +1322,13 @@
         let caixinha = parseFloat(document.getElementById('reservaCaixinha').value) || 0;
         let diaSemana = document.getElementById('diaSemana').value;
 
+        let kmRodados = (kmFim > kmIni) ? (kmFim - kmIni) : 0;
+        let custosFixosDia = parcelaCarro + seguroCarro;
+        let totalDespesas = valorAbast + custosFixosDia + rua;
+        let liquido = bruto - totalDespesas;
+
         let registroObj = {
-            data, diaSemana, bruto, kmIni, kmFim, horas, litros, valorAbast, rua, parcelaCarro, seguroCarro, ipva, manut, caixinha
+            data, diaSemana, bruto, kmIni, kmFim, kmRodados, horas, litros, valorAbast, rua, parcelaCarro, seguroCarro, ipva, manut, caixinha, liquido
         };
 
         let idxExistente = memoriaHistorico.findIndex(item => item.data === data);
@@ -1358,7 +1356,6 @@
         calcular();
     }
 
-    // MANUTENÇÃO DO CARRO
     function alternarParcelasPeca() {
         let forma = document.getElementById('manutFormaPeca').value;
         document.getElementById('containerVencimentoPeca').style.display = (forma !== '') ? 'block' : 'none';
@@ -1454,7 +1451,7 @@
             return;
         }
         let html = '';
-        memoriaHistorico.sort((a,b) => new Date(b.data) - new Date(a.data)).forEach((item, index) => {
+        memoriaHistorico.sort((a,b) => new Date(b.data) - new Date(a.data)).forEach((item) => {
             html += `
                 <div style="background: #181818; border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
                     <div style="display: flex; justify-content: space-between;">
@@ -1467,9 +1464,146 @@
         container.innerHTML = html;
     }
 
-    function renderizarSemanal() {}
-    function renderizarMensal() {}
-    function mudarSemanaOffset(n) {}
+    function mudarSemanaOffset(n) {
+        semanaOffsetAtual += n;
+        renderizarSemanal();
+    }
+
+    function renderizarSemanal() {
+        let hoje = new Date();
+        hoje.setDate(hoje.getDate() + (semanaOffsetAtual * 7));
+        let diaSem = hoje.getDay();
+        let diffToMonday = hoje.getDate() - diaSem + (diaSem === 0 ? -6 : 1);
+        let primeiraSegunda = new Date(hoje.setDate(diffToMonday));
+
+        let diasSemanaArr = [];
+        let brutoTotal = 0, liquidoTotal = 0, kmTotal = 0, ipvaTotal = 0, manutTotal = 0, caixTotal = 0, gasTotal = 0, custosFixosTotal = 0, horasTotal = 0, diasTrabalhados = 0;
+
+        let barrinhaHTML = '';
+        for (let i = 0; i < 7; i++) {
+            let d = new Date(primeiraSegunda);
+            d.setDate(d.getDate() + i);
+            let isoStr = d.toISOString().substring(0, 10);
+            let diaNum = d.getDate();
+            let nomeCurto = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][i];
+
+            let encontrado = memoriaHistorico.find(item => item.data === isoStr);
+            let classTrabalhado = encontrado ? 'worked' : '';
+            let valStr = encontrado ? `R$ ${(encontrado.bruto||0).toFixed(0)}` : '-';
+
+            if (encontrado) {
+                diasTrabalhados++;
+                brutoTotal += (encontrado.bruto || 0);
+                liquidoTotal += (encontrado.liquido || 0);
+                kmTotal += (encontrado.kmRodados || 0);
+                ipvaTotal += (encontrado.ipva || 0);
+                manutTotal += (encontrado.manut || 0);
+                caixTotal += (encontrado.caixinha || 0);
+                gasTotal += (encontrado.valorAbast || 0);
+                custosFixosTotal += ((encontrado.parcelaCarro || 0) + (encontrado.seguroCarro || 0));
+                horasTotal += (encontrado.horas || 0);
+            }
+
+            barrinhaHTML += `
+                <div class="calendar-day-cell ${classTrabalhado}">
+                    <span class="cal-day-num">${nomeCurto} ${diaNum}</span>
+                    <span class="cal-day-val">${valStr}</span>
+                </div>
+            `;
+        }
+
+        document.getElementById('semanaBarrinhaDias').innerHTML = barrinhaHTML;
+        let ultimaDomingo = new Date(primeiraSegunda);
+        ultimaDomingo.setDate(ultimaDomingo.getDate() + 6);
+        document.getElementById('semanaLabelIntervalo').innerText = `${primeiraSegunda.toLocaleDateString('pt-BR')} a ${ultimaDomingo.toLocaleDateString('pt-BR')}`;
+
+        document.getElementById('semanaBrutoGrande').innerText = "R$ " + brutoTotal.toFixed(2);
+        let elLiq = document.getElementById('semanaLiquido');
+        elLiq.innerText = "R$ " + liquidoTotal.toFixed(2);
+        elLiq.style.color = liquidoTotal >= 0 ? "var(--primary-color)" : "var(--danger-color)";
+
+        document.getElementById('semanaKmTotal').innerText = kmTotal + " km";
+        document.getElementById('semanaValorKm').innerText = "R$ " + (kmTotal > 0 ? (brutoTotal / kmTotal).toFixed(2) : "0,00");
+        document.getElementById('semanaValorHr').innerText = "R$ " + (horasTotal > 0 ? (liquidoTotal / horasTotal).toFixed(2) : "0,00");
+        document.getElementById('semanaIpva').innerText = "R$ " + ipvaTotal.toFixed(2);
+        document.getElementById('semanaManutencao').innerText = "R$ " + manutTotal.toFixed(2);
+        document.getElementById('semanaCaixinha').innerText = "R$ " + caixTotal.toFixed(2);
+        document.getElementById('semanaGasolina').innerText = "R$ " + gasTotal.toFixed(2);
+        document.getElementById('semanaCustosFixos').innerText = "R$ " + custosFixosTotal.toFixed(2);
+        document.getElementById('semanaManutencaoPagar').innerText = "R$ 0,00";
+
+        document.getElementById('semanaDias').innerText = diasTrabalhados + " dias";
+        document.getElementById('semanaMediaDia').innerText = "R$ " + (diasTrabalhados > 0 ? (liquidoTotal / diasTrabalhados).toFixed(2) : "0,00");
+    }
+
+    function renderizarMensal() {
+        let mesAnoVal = document.getElementById('filtroMesAno').value;
+        if (!mesAnoVal) return;
+
+        let [ano, mes] = mesAnoVal.split('-').map(Number);
+        let primeiroDiaMes = new Date(ano, mes - 1, 1);
+        let ultimoDiaMes = new Date(ano, mes, 0);
+
+        let brutoTotal = 0, liquidoTotal = 0, kmTotal = 0, ipvaTotal = 0, manutTotal = 0, caixTotal = 0, gasTotal = 0, custosFixosTotal = 0, horasTotal = 0, diasTrabalhados = 0;
+
+        let diaInicioSemana = primeiroDiaMes.getDay();
+        diaInicioSemana = diaInicioSemana === 0 ? 6 : diaInicioSemana - 1;
+
+        let calendarHTML = '';
+        for (let i = 0; i < diaInicioSemana; i++) {
+            calendarHTML += `<div class="calendar-day-cell" style="opacity: 0.1; cursor: default;"></div>`;
+        }
+
+        for (let dia = 1; dia <= ultimoDiaMes.getDate(); dia++) {
+            let mesStr = String(mes).padStart(2, '0');
+            let diaStr = String(dia).padStart(2, '0');
+            let isoStr = `${ano}-${mesStr}-${diaStr}`;
+
+            let encontrado = memoriaHistorico.find(item => item.data === isoStr);
+            let classTrabalhado = encontrado ? 'worked' : '';
+            let valStr = encontrado ? `R$ ${(encontrado.bruto||0).toFixed(0)}` : '';
+
+            if (encontrado) {
+                diasTrabalhados++;
+                brutoTotal += (encontrado.bruto || 0);
+                liquidoTotal += (encontrado.liquido || 0);
+                kmTotal += (encontrado.kmRodados || 0);
+                ipvaTotal += (encontrado.ipva || 0);
+                manutTotal += (encontrado.manut || 0);
+                caixTotal += (encontrado.caixinha || 0);
+                gasTotal += (encontrado.valorAbast || 0);
+                custosFixosTotal += ((encontrado.parcelaCarro || 0) + (encontrado.seguroCarro || 0));
+                horasTotal += (encontrado.horas || 0);
+            }
+
+            calendarHTML += `
+                <div class="calendar-day-cell ${classTrabalhado}">
+                    <span class="cal-day-num">${dia}</span>
+                    <span class="cal-day-val">${valStr}</span>
+                </div>
+            `;
+        }
+
+        document.getElementById('calendarDaysContainer').innerHTML = calendarHTML;
+
+        document.getElementById('mesBrutoGrande').innerText = "R$ " + brutoTotal.toFixed(2);
+        let elLiq = document.getElementById('mesLiquido');
+        elLiq.innerText = "R$ " + liquidoTotal.toFixed(2);
+        elLiq.style.color = liquidoTotal >= 0 ? "var(--primary-color)" : "var(--danger-color)";
+
+        document.getElementById('mesKmTotal').innerText = kmTotal + " km";
+        document.getElementById('mesValorKm').innerText = "R$ " + (kmTotal > 0 ? (brutoTotal / kmTotal).toFixed(2) : "0,00");
+        document.getElementById('mesValorHr').innerText = "R$ " + (horasTotal > 0 ? (liquidoTotal / horasTotal).toFixed(2) : "0,00");
+        document.getElementById('mesIpva').innerText = "R$ " + ipvaTotal.toFixed(2);
+        document.getElementById('mesManutencao').innerText = "R$ " + manutTotal.toFixed(2);
+        document.getElementById('mesCaixinha').innerText = "R$ " + caixTotal.toFixed(2);
+        document.getElementById('mesGasolina').innerText = "R$ " + gasTotal.toFixed(2);
+        document.getElementById('mesCustosFixos').innerText = "R$ " + custosFixosTotal.toFixed(2);
+        document.getElementById('mesManutencaoPagar').innerText = "R$ 0,00";
+
+        document.getElementById('mesDias').innerText = diasTrabalhados + " dias";
+        document.getElementById('mesMediaDia').innerText = "R$ " + (diasTrabalhados > 0 ? (liquidoTotal / diasTrabalhados).toFixed(2) : "0,00");
+    }
 </script>
 </body>
-            </html>
+</html>
