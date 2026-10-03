@@ -1134,33 +1134,23 @@
     let cronometroSegundos = 0;
     let cronometroRodando = false;
 
-    // VERIFICAÇÃO DE DATA E HORA AUTOMÁTICA VIA NTP/API DE TEMPO
-    async function verificarDataHoraAutomatica() {
-        try {
-            let resposta = await fetch('https://worldtimeapi.org/api/ip', { cache: 'no-store' });
-            if (!resposta.ok) return true; // Se houver instabilidade na rede, não trava indevidamente
-            let dados = await resposta.json();
-            let horarioServidor = new Date(dados.datetime).getTime();
-            let horarioLocal = Date.now();
-            let diferencaMinutos = Math.abs(horarioLocal - horarioServidor) / (1000 * 60);
-
-            // Se a diferença for maior que 3 minutos, o relógio está alterado/manual
-            if (diferencaMinutos > 3) {
-                alert("⚠️ Acesso Negado! A data e a hora do seu aparelho não estão configuradas como automáticas. Por favor, ajuste as configurações do seu celular para data e hora automáticas para criar conta e usar o aplicativo.");
-                return false;
-            }
-            return true;
-        } catch (e) {
-            return true; // Falha de rede temporária não impede o uso, mas o app valida sempre que possível
-        }
-    }
-
     function obterDataLocalAtualISO() {
         const agora = new Date();
         const ano = agora.getFullYear();
         const mes = String(agora.getMonth() + 1).padStart(2, '0');
         const dia = String(agora.getDate()).padStart(2, '0');
         return `${ano}-${mes}-${dia}`;
+    }
+
+    // NOVA FUNÇÃO DE VALIDAÇÃO DE DATA E ANO ATUAL
+    function validarDataAtualExata(dataIso) {
+        if (!dataIso) return false;
+        const hojeIso = obterDataLocalAtualISO(); // Formato YYYY-MM-DD atual do sistema
+        if (dataIso !== hojeIso) {
+            alert("Operação permitida apenas para a data e ano atuais do dia (" + hojeIso.split('-').reverse().join('/') + ").");
+            return false;
+        }
+        return true;
     }
 
     function inicializarDataHoje() {
@@ -1205,10 +1195,7 @@
         if (nomeTab === 'manutencaoCarro') renderizarManutencoesCarro();
     }
 
-    async function mudarTabComVerificacao(nomeTab) {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-
+    function mudarTabComVerificacao(nomeTab) {
         if (usuarioBloqueadoGeral && nomeTab !== 'planos') {
             document.getElementById('telaBloqueio').style.display = 'flex';
             return;
@@ -1304,13 +1291,13 @@
         salvarNoFirestore();
     }
 
-    async function salvarDia() {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-
+    function salvarDia() {
         let data = document.getElementById('dataRegistro').value;
         if (!data) { alert("Selecione a data do registro."); return; }
         
+        // APLICANDO A VALIDAÇÃO DA DATA E ANO CORRETO AQUI
+        if (!validarDataAtualExata(data)) return;
+
         let bruto = parseFloat(document.getElementById('bruto').value) || 0;
         let kmIni = parseFloat(document.getElementById('kmInicial').value) || 0;
         let kmFim = parseFloat(document.getElementById('kmFinal').value) || 0;
@@ -1395,21 +1382,23 @@
         }
     }
 
-    async function salvarManutencaoCarro() {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-
+    function salvarManutencaoCarro() {
         let servico = document.getElementById('manutServico').value.trim();
         if (!servico) { alert("Informe o serviço/peça realizada."); return; }
 
+        let vencPeca = document.getElementById('manutVencimentoPeca').value;
+        let vencObra = document.getElementById('manutVencimentoObra').value;
+
+        // Validar datas de vencimento se informadas
+        if (vencPeca && !validarDataAtualExata(vencPeca)) return;
+        if (vencObra && !validarDataAtualExata(vencObra)) return;
+
         let valorPeca = parseFloat(document.getElementById('manutValorPeca').value) || 0;
         let formaPeca = document.getElementById('manutFormaPeca').value;
-        let vencimentoPeca = document.getElementById('manutVencimentoPeca').value;
         let parcelasPeca = parseInt(document.getElementById('manutParcelasPeca').value) || 1;
 
         let maoObra = parseFloat(document.getElementById('manutMaoObra').value) || 0;
         let formaObra = document.getElementById('manutFormaObra').value;
-        let vencimentoObra = document.getElementById('manutVencimentoObra').value;
         let parcelasObra = parseInt(document.getElementById('manutParcelasObraSelect').value) || 1;
 
         let kmFeito = parseInt(document.getElementById('manutKmFeito').value) || 0;
@@ -1418,8 +1407,8 @@
 
         let objetoManut = {
             id: editId ? editId : 'manut_' + Date.now(),
-            servico, valorPeca, formaPeca, vencimentoPeca, parcelasPeca,
-            maoObra, formaObra, vencimentoObra, parcelasObra, kmFeito, kmRefazer
+            servico, valorPeca, formaPeca, vencimentoPeca: vencPeca, parcelasPeca,
+            maoObra, formaObra, vencimentoObra: vencObra, parcelasObra, kmFeito, kmRefazer
         };
 
         if (editId) {
@@ -1706,11 +1695,10 @@
         document.getElementById('painelEdicaoSemanal').style.display = 'none';
     }
 
-    async function salvarEdicaoSemanal() {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-
+    function salvarEdicaoSemanal() {
         let isoStr = document.getElementById('editSemanaDataIso').value;
+        if (!validarDataAtualExata(isoStr)) return;
+
         let bruto = parseFloat(document.getElementById('editSemanaBruto').value) || 0;
         let kmIni = parseFloat(document.getElementById('editSemanaKmIni').value) || 0;
         let kmFim = parseFloat(document.getElementById('editSemanaKmFim').value) || 0;
@@ -1744,11 +1732,10 @@
         alert("Alterações salvas com sucesso!");
     }
 
-    async function excluirDiaSemanal() {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-
+    function excluirDiaSemanal() {
         let isoStr = document.getElementById('editSemanaDataIso').value;
+        if (!validarDataAtualExata(isoStr)) return;
+
         if (confirm("Deseja realmente excluir os lançamentos deste dia?")) {
             memoriaHistorico = memoriaHistorico.filter(h => h.data !== isoStr);
             salvarNoFirestore();
@@ -1875,11 +1862,10 @@
         document.getElementById('painelEdicaoMensal').style.display = 'none';
     }
 
-    async function salvarEdicaoMensalTab() {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-
+    function salvarEdicaoMensalTab() {
         let isoStr = document.getElementById('editMesDataIso').value;
+        if (!validarDataAtualExata(isoStr)) return;
+
         let bruto = parseFloat(document.getElementById('editMesBruto').value) || 0;
         let kmIni = parseFloat(document.getElementById('editMesKmIni').value) || 0;
         let kmFim = parseFloat(document.getElementById('editMesKmFim').value) || 0;
@@ -1913,11 +1899,10 @@
         alert("Alterações salvas com sucesso!");
     }
 
-    async function excluirDiaMensalTab() {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-
+    function excluirDiaMensalTab() {
         let isoStr = document.getElementById('editMesDataIso').value;
+        if (!validarDataAtualExata(isoStr)) return;
+
         if (confirm("Deseja realmente excluir os lançamentos deste dia?")) {
             memoriaHistorico = memoriaHistorico.filter(h => h.data !== isoStr);
             salvarNoFirestore();
@@ -1926,142 +1911,92 @@
         }
     }
 
-    // AUTENTICAÇÃO COM VALIDAÇÃO DE HORA AUTOMÁTICA
-    async function fazerCadastroEmailSenha() {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-
-        let email = document.getElementById('loginEmail').value.trim();
-        let senha = document.getElementById('loginSenha').value;
-        if(!email || !senha) { alert("Preencha e-mail e senha para criar a conta."); return; }
-
-        auth.createUserWithEmailAndPassword(email, senha)
-            .then((res) => { alert("Conta criada com sucesso!"); })
-            .catch((err) => { alert("Erro ao criar conta: " + err.message); });
-    }
-
-    async function fazerLoginEmailSenha() {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-
-        let email = document.getElementById('loginEmail').value.trim();
-        let senha = document.getElementById('loginSenha').value;
-        if(!email || !senha) { alert("Preencha e-mail e senha."); return; }
-
-        auth.signInWithEmailAndPassword(email, senha)
-            .catch((err) => { alert("Erro ao entrar: " + err.message); });
-    }
-
-    document.getElementById('btnLogin').addEventListener('click', async () => {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-        auth.signInWithPopup(provider).catch(err => alert("Erro no Google: " + err.message));
-    });
-
-    document.getElementById('btnRegister').addEventListener('click', async () => {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-        auth.signInWithPopup(provider).catch(err => alert("Erro no Google: " + err.message));
-    });
-
-    function sairDaConta() {
-        auth.signOut().then(() => {
-            document.getElementById('containerPrincipal').style.display = 'none';
-            document.getElementById('telaLogin').style.display = 'flex';
-            document.getElementById('telaBloqueio').style.display = 'none';
-        });
-    }
-
-    // MONITORAMENTO DE ESTADO DE AUTENTICAÇÃO E SINCRONIZAÇÃO
-    auth.onAuthStateChanged(async (user) => {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) {
-            auth.signOut();
+    function renderizarHistorico() {
+        let container = document.getElementById('listaHistorico');
+        if (!container) return;
+        if (memoriaHistorico.length === 0) {
+            container.innerHTML = `<div style="text-align: center; color: #777; padding: 15px;">Nenhum lançamento no histórico.</div>`;
             return;
         }
 
-        if (user) {
-            document.getElementById('telaLogin').style.display = 'none';
-            document.getElementById('containerPrincipal').style.display = 'block';
-            document.getElementById('menuEmailUsuario').innerText = user.email || user.displayName || "Conectado";
-            carregarDadosFirestore(user.uid);
-        } else {
-            document.getElementById('containerPrincipal').style.display = 'none';
-            document.getElementById('telaLogin').style.display = 'flex';
+        let historicoOrdenado = [...memoriaHistorico].sort((a,b) => new Date(b.data) - new Date(a.data));
+        let html = '';
+        historicoOrdenado.forEach((item) => {
+            let despesas = (item.valorAbast || 0) + (item.parcelaCarro || 0) + (item.seguroCarro || 0) + (item.rua || 0);
+            let liquido = (item.bruto || 0) - despesas;
+            let dataFormatada = item.data ? item.data.split('-').reverse().join('/') : '-';
+
+            html += `
+                <div style="background: #181818; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <strong style="color: var(--primary-color); font-size: 0.95rem;">${dataFormatada} (${item.diaSemana || ''})</strong>
+                        <div>
+                            <button class="btn-sm btn-edit" onclick="editarHistoricoItem('${item.data}')">Editar</button>
+                            <button class="btn-sm btn-delete" onclick="excluirHistoricoItem('${item.data}')">Excluir</button>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #fff;">Bruto: R$ ${(item.bruto||0).toFixed(2)} | Líquido: <span style="color: ${liquido >= 0 ? 'var(--primary-color)' : 'var(--danger-color)'};">R$ ${liquido.toFixed(2)}</span></div>
+                    <div style="font-size: 0.75rem; color: #aaa; margin-top: 4px;">KM Rodados: ${(item.kmFim > item.kmIni) ? (item.kmFim - item.kmIni) : 0} km | Horas: ${item.horas || 0}h</div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function editarHistoricoItem(isoStr) {
+        mudarTab('diario');
+        document.getElementById('dataRegistro').value = isoStr;
+        atualizarDiaSemanaPorData('dataRegistro', 'diaSemana');
+        
+        let reg = memoriaHistorico.find(h => h.data === isoStr);
+        if (reg) {
+            document.getElementById('bruto').value = reg.bruto || "";
+            document.getElementById('kmInicial').value = reg.kmIni || "";
+            document.getElementById('kmFinal').value = reg.kmFim || "";
+            document.getElementById('horasOnline').value = reg.horas || "0.00";
+            document.getElementById('litros').value = reg.litros || "";
+            document.getElementById('valorAbastecido').value = reg.valorAbast || "";
+            document.getElementById('gastosRua').value = reg.rua || "";
+            document.getElementById('parcelaCarro').value = reg.parcelaCarro || "";
+            document.getElementById('seguroCarro').value = reg.seguroCarro || "";
+            document.getElementById('reservaIpva').value = reg.ipva || "";
+            document.getElementById('reservaManutencao').value = reg.manut || "";
+            document.getElementById('reservaCaixinha').value = reg.caixinha || "";
+            document.getElementById('diaSemana').value = reg.diaSemana || "Segunda-feira";
+            
+            let idx = memoriaHistorico.findIndex(h => h.data === isoStr);
+            document.getElementById('editIndex').value = idx;
+            document.getElementById('btnSalvar').innerText = "Atualizar Lançamento";
+            calcular();
         }
-    });
+    }
 
-    function carregarDadosFirestore(uid) {
-        if(unsubscribeFirestore) unsubscribeFirestore();
-        let ref = db.collection('usuarios').doc(uid);
-        unsubscribeFirestore = ref.onSnapshot((doc) => {
-            if (doc.exists) {
-                let dados = doc.data();
-                memoriaHistorico = dados.historico || [];
-                memoriaManutencoes = dados.manutencoes || [];
-                if (dados.config) memoriaConfig = dados.config;
+    function excluirHistoricoItem(isoStr) {
+        if (!validarDataAtualExata(isoStr)) return;
 
-                document.getElementById('cfgParcelaMensal').value = memoriaConfig.parcela || 1375;
-                document.getElementById('cfgSeguroMensal').value = memoriaConfig.seguro || 0;
-                document.getElementById('cfgDiasMes').value = memoriaConfig.diasMes || 26;
-                atualizarValoresAutomaticosDia();
+        if (confirm("Deseja realmente excluir este lançamento do histórico?")) {
+            memoriaHistorico = memoriaHistorico.filter(h => h.data !== isoStr);
+            salvarNoFirestore();
+            renderizarHistorico();
+        }
+    }
 
-                // Verificar Assinatura
-                verificarAssinaturaUsuario(dados);
-            } else {
-                ref.set({ historico: [], manutencoes: [], config: memoriaConfig, planoExpiracao: Date.now() + (3 * 24 * 60 * 60 * 1000) });
+    function atualizarDiaSemanaPorData(idInputData, idSelectDia) {
+        let val = document.getElementById(idInputData).value;
+        if (!val) return;
+        let partes = val.split('-');
+        let d = new Date(partes[0], partes[1] - 1, partes[2]);
+        let dias = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+        let nomeDia = dias[d.getDay()];
+        let sel = document.getElementById(idSelectDia);
+        if (sel) {
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === nomeDia) {
+                    sel.selectedIndex = i;
+                    break;
+                }
             }
-        });
-    }
-
-    function salvarNoFirestore() {
-        let user = auth.currentUser;
-        if (!user) return;
-        db.collection('usuarios').doc(user.uid).set({
-            historico: memoriaHistorico,
-            manutencoes: memoriaManutencoes,
-            config: memoriaConfig
-        }, { merge: true });
-    }
-
-    function verificarAssinaturaUsuario(dados) {
-        let agora = Date.now();
-        let expiracao = dados.planoExpiracao || 0;
-        let diffDias = Math.ceil((expiracao - agora) / (1000 * 60 * 60 * 24));
-
-        let txtStatus = document.getElementById('menuStatusTexto');
-        let txtDias = document.getElementById('statusPlanoDias');
-        let divBloqueio = document.getElementById('telaBloqueio');
-
-        if (diffDias > 0) {
-            usuarioBloqueadoGeral = false;
-            divBloqueio.style.display = 'none';
-            if (txtStatus) { txtStatus.innerText = `Ativo (${diffDias} dias restantes)`; txtStatus.style.color = "var(--primary-color)"; }
-            if (txtDias) { txtDias.innerText = `Sua assinatura está ativa por mais ${diffDias} dias.`; }
-        } else {
-            usuarioBloqueadoGeral = true;
-            divBloqueio.style.display = 'flex';
-            if (txtStatus) { txtStatus.innerText = "Expirado / Bloqueado"; txtStatus.style.color = "var(--danger-color)"; }
-            if (txtDias) { txtDias.innerText = "Seu período de acesso expirou."; }
         }
-    }
-
-    async function assinar(tipo) {
-        let horarioValido = await verificarDataHoraAutomatica();
-        if (!horarioValido) return;
-
-        let user = auth.currentUser;
-        if (!user) return;
-        let diasAdicionar = tipo === 'semanal' ? 7 : (tipo === 'mensal' ? 30 : 365);
-        let novaExpiracao = Date.now() + (diasAdicionar * 24 * 60 * 60 * 1000);
-
-        db.collection('usuarios').doc(user.uid).set({
-            planoExpiracao: novaExpiracao
-        }, { merge: true }).then(() => {
-            alert("Plano ativado com sucesso!");
-            document.getElementById('telaBloqueio').style.display = 'none';
-            mudarTab('diario');
-        });
     }
 
     function toggleMenuDropdown() {
@@ -2069,7 +2004,7 @@
     }
 
     window.onclick = function(event) {
-        if (!event.target.matches('.menu-dots-btn') && !event.target.closest('.menu-dropdown')) {
+        if (!event.target.matches('.menu-dots-btn')) {
             let dropdowns = document.getElementsByClassName("menu-dropdown");
             for (let i = 0; i < dropdowns.length; i++) {
                 let openDropdown = dropdowns[i];
@@ -2080,20 +2015,181 @@
         }
     }
 
-    function abrirModalEsqueciSenha() { document.getElementById('modalEsqueciSenha').style.display = 'flex'; }
-    function fecharModalEsqueciSenha() { document.getElementById('modalEsqueciSenha').style.display = 'none'; }
-    function enviarEmailRecuperacao() {
-        let email = document.getElementById('emailRecuperacao').value.trim();
-        if(!email) { alert("Digite o e-mail cadastrado."); return; }
-        auth.sendPasswordResetEmail(email)
-            .then(() => { alert("E-mail de redefinição enviado com sucesso!"); fecharModalEsqueciSenha(); })
-            .catch((err) => { alert("Erro ao enviar e-mail: " + err.message); });
+    // FIREBASE / DADOS
+    function carregarDoFirestore(uid) {
+        if (unsubscribeFirestore) unsubscribeFirestore();
+        let docRef = db.collection("usuarios_motorista").doc(uid);
+        unsubscribeFirestore = docRef.onSnapshot((doc) => {
+            if (doc.exists) {
+                let dados = doc.data();
+                memoriaHistorico = dados.historico || [];
+                memoriaManutencoes = dados.manutencoes || [];
+                if (dados.config) {
+                    memoriaConfig = dados.config;
+                    document.getElementById('cfgParcelaMensal').value = memoriaConfig.parcela || 1375;
+                    document.getElementById('cfgSeguroMensal').value = memoriaConfig.seguro || 0;
+                    document.getElementById('cfgDiasMes').value = memoriaConfig.diasMes || 26;
+                }
+                atualizarValoresAutomaticosDia();
+                verificarAssinaturaDados(dados);
+            } else {
+                docRef.set({ historico: [], manutencoes: [], config: memoriaConfig, assinaturaValidade: null });
+            }
+        });
     }
 
-    window.onload = function() {
-        inicializarDataHoje();
-        calcular();
-    };
+    function salvarNoFirestore() {
+        let user = auth.currentUser;
+        if (!user) return;
+        db.collection("usuarios_motorista").doc(user.uid).set({
+            historico: memoriaHistorico,
+            manutencoes: memoriaManutencoes,
+            config: memoriaConfig
+        }, { merge: true }).catch((error) => {
+            console.error("Erro ao salvar: ", error);
+        });
+    }
+
+    function verificarAssinaturaDados(dados) {
+        let user = auth.currentUser;
+        if (!user) return;
+        let emailEl = document.getElementById('menuEmailUsuario');
+        if (emailEl) emailEl.innerText = user.email;
+
+        let statusTextoEl = document.getElementById('menuStatusTexto');
+        let statusPlanoDiasEl = document.getElementById('statusPlanoDias');
+        let statusPagamentoEl = document.getElementById('status-pagamento');
+
+        let validade = dados.assinaturaValidade;
+        let agora = new Date();
+
+        // Se for o admin principal, libera tudo direto
+        if (user.email === 'Vittinho942@gmail.com') {
+            usuarioBloqueadoGeral = false;
+            if (statusTextoEl) { statusTextoEl.innerText = "👑 Administrador (Vitalício)"; statusTextoEl.style.color = "var(--primary-color)"; }
+            if (statusPlanoDiasEl) statusPlanoDiasEl.innerText = "Acesso Administrador Ilimitado";
+            document.getElementById('telaBloqueio').style.display = 'none';
+            document.getElementById('containerPrincipal').style.display = 'block';
+            return;
+        }
+
+        if (validade && validade.toDate() > agora) {
+            let diffDias = Math.ceil((validade.toDate() - agora) / (1000 * 60 * 60 * 24));
+            usuarioBloqueadoGeral = false;
+            if (statusTextoEl) { statusTextoEl.innerText = `Ativo (${diffDias} dias restantes)`; statusTextoEl.style.color = "var(--primary-color)"; }
+            if (statusPlanoDiasEl) statusPlanoDiasEl.innerText = `Sua assinatura está ativa! Faltam ${diffDias} dias.`;
+            document.getElementById('telaBloqueio').style.display = 'none';
+            document.getElementById('containerPrincipal').style.display = 'block';
+        } else {
+            usuarioBloqueadoGeral = true;
+            if (statusTextoEl) { statusTextoEl.innerText = "❌ Expirado / Inativo"; statusTextoEl.style.color = "var(--danger-color)"; }
+            if (statusPlanoDiasEl) statusPlanoDiasEl.innerText = "Sua assinatura expirou. Renove para continuar.";
+            if (statusPagamentoEl) statusPagamentoEl.innerText = "Acesso bloqueado por falta de assinatura ativa.";
+            document.getElementById('containerPrincipal').style.display = 'none';
+            document.getElementById('telaBloqueio').style.display = 'flex';
+        }
+    }
+
+    function assinar(tipoPlano) {
+        let dias = 7;
+        if (tipoPlano === 'mensal') dias = 30;
+        if (tipoPlano === 'anual') dias = 365;
+
+        let novaValidade = new Date();
+        novaValidade.setDate(novaValidade.getDate() + dias);
+
+        let user = auth.currentUser;
+        if (!user) return;
+
+        db.collection("usuarios_motorista").doc(user.uid).set({
+            assinaturaValidade: firebase.firestore.Timestamp.fromDate(novaValidade)
+        }, { merge: true }).then(() => {
+            alert("Parabéns! Plano " + tipoPlano + " ativado com sucesso por " + dias + " dias!");
+            document.getElementById('telaBloqueio').style.display = 'none';
+            mudarTab('diario');
+        }).catch((err) => {
+            alert("Erro ao processar assinatura: " + err.message);
+        });
+    }
+
+    function fazerLoginEmailSenha() {
+        let email = document.getElementById('loginEmail').value.trim();
+        let senha = document.getElementById('loginSenha').value;
+        if (!email || !senha) { alert("Preencha e-mail e senha."); return; }
+        auth.signInWithEmailAndPassword(email, senha).catch(err => alert("Erro ao entrar: " + err.message));
+    }
+
+    function fazerCadastroEmailSenha() {
+        let email = document.getElementById('loginEmail').value.trim();
+        let senha = document.getElementById('loginSenha').value;
+        if (!email || !senha) { alert("Preencha e-mail e senha para cadastrar."); return; }
+        auth.createUserWithEmailAndPassword(email, senha).then((cred) => {
+            let dataTeste = new Date();
+            dataTeste.setDate(dataTeste.getDate() + 3); // 3 dias grátis para novos
+            db.collection("usuarios_motorista").doc(cred.user.uid).set({
+                assinaturaValidade: firebase.firestore.Timestamp.fromDate(dataTeste),
+                historico: [], manutencoes: [], config: memoriaConfig
+            });
+            alert("Conta criada com sucesso! Você ganhou 3 dias de teste gratuito.");
+        }).catch(err => alert("Erro ao cadastrar: " + err.message));
+    }
+
+    function abrirModalEsqueciSenha() {
+        document.getElementById('modalEsqueciSenha').style.display = 'flex';
+    }
+
+    function fecharModalEsqueciSenha() {
+        document.getElementById('modalEsqueciSenha').style.display = 'none';
+    }
+
+    function enviarEmailRecuperacao() {
+        let email = document.getElementById('emailRecuperacao').value.trim();
+        if (!email) { alert("Digite seu e-mail."); return; }
+        auth.sendPasswordResetEmail(email).then(() => {
+            alert("E-mail de redefinição enviado com sucesso!");
+            fecharModalEsqueciSenha();
+        }).catch(err => alert("Erro: " + err.message));
+    }
+
+    function sairDaConta() {
+        auth.signOut().then(() => {
+            document.getElementById('containerPrincipal').style.display = 'none';
+            document.getElementById('telaBloqueio').style.display = 'none';
+            document.getElementById('telaLogin').style.display = 'flex';
+        });
+    }
+
+    document.getElementById('btnLogin').addEventListener('click', () => {
+        auth.signInWithPopup(provider).catch(err => alert("Erro Google: " + err.message));
+    });
+
+    document.getElementById('btnRegister').addEventListener('click', () => {
+        auth.signInWithPopup(provider).then((result) => {
+            let user = result.user;
+            db.collection("usuarios_motorista").doc(user.uid).get().then((doc) => {
+                if (!doc.exists) {
+                    let dataTeste = new Date();
+                    dataTeste.setDate(dataTeste.getDate() + 3);
+                    db.collection("usuarios_motorista").doc(user.uid).set({
+                        assinaturaValidade: firebase.firestore.Timestamp.fromDate(dataTeste),
+                        historico: [], manutencoes: [], config: memoriaConfig
+                    });
+                }
+            });
+        }).catch(err => alert("Erro Google Cadastro: " + err.message));
+    });
+
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            document.getElementById('telaLogin').style.display = 'none';
+            carregarDoFirestore(user.uid);
+            inicializarDataHoje();
+        } else {
+            document.getElementById('telaLogin').style.display = 'flex';
+            document.getElementById('containerPrincipal').style.display = 'none';
+            document.getElementById('telaBloqueio').style.display = 'none';
+        }
+    });
 </script>
 </body>
 </html>
