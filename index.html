@@ -482,7 +482,7 @@
         </p>
         <div id="status-pagamento" style="color: var(--primary-color); font-weight: bold; margin-bottom: 15px; font-size: 0.9rem;"></div>
         
-        <button class="btn-action" onclick="mudarTab('planos'); document.getElementById('telaBloqueio').style.display = 'none'; document.getElementById('containerPrincipal').classList.remove('bloqueado-geral');" style="margin-bottom: 10px;">Ver Planos e Assinar</button>
+        <button class="btn-action" onclick="mudarTab('planos'); document.getElementById('telaBloqueio').style.display = 'none';" style="margin-bottom: 10px;">Ver Planos e Assinar</button>
         <button class="btn-action" onclick="sairDaConta()" style="background: var(--input-bg); color: #fff;">Sair da Conta</button>
     </div>
 </div>
@@ -1137,7 +1137,6 @@
     let unsubscribeFirestore = null;
 
     function mudarTab(nomeTab) {
-        // Se estiver bloqueado, impede navegação por abas
         if(document.getElementById('containerPrincipal').classList.contains('bloqueado-geral')) return;
 
         const abas = ['diario', 'semana', 'mensal', 'config', 'manutencaoCarro', 'historico', 'planos'];
@@ -1229,10 +1228,10 @@
             if (telaBloqueio && containerPrincipal) {
                 if (bloqueado) {
                     telaBloqueio.style.display = 'flex';
-                    containerPrincipal.classList.add('bloqueado-geral'); // Bloqueia todas as abas e cliques na calculadora
+                    containerPrincipal.classList.add('bloqueado-geral');
                 } else {
                     telaBloqueio.style.display = 'none';
-                    containerPrincipal.classList.remove('bloqueado-geral'); // Libera o uso
+                    containerPrincipal.classList.remove('bloqueado-geral');
                 }
             }
         } catch (e) {
@@ -1415,64 +1414,20 @@
         }
     }
 
-    async function assinar(planoSelecionado) {
+    // CORREÇÃO APLICADA AQUI: Apenas abre o link de pagamento sem liberar a aplicação indevidamente antes do pagamento
+    function assinar(planoSelecionado) {
         let user = auth.currentUser;
         if (!user) {
             alert("Você precisa estar logado para assinar.");
             return;
         }
 
-        let diasAdicionais = 30;
-        let nomePlano = "Mensal";
-
-        if (planoSelecionado === 'semanal') {
-            diasAdicionais = 7;
-            nomePlano = "Semanal";
-        } else if (planoSelecionado === 'anual') {
-            diasAdicionais = 365;
-            nomePlano = "Anual";
-        }
-
-        try {
-            let userRef = db.collection("usuarios").doc(user.uid);
-            let docSnap = await userRef.get({ source: 'server' }).catch(async () => {
-                return await userRef.get();
-            });
-            
-            let baseDate = new Date();
-            baseDate.setHours(0,0,0,0);
-            
-            if (docSnap.exists) {
-                let dados = docSnap.data();
-                if (dados.assinaturaAtiva && dados.dataExpiracao) {
-                    let expiracaoAtual = new Date(dados.dataExpiracao);
-                    expiracaoAtual.setHours(0,0,0,0);
-                    if (expiracaoAtual > baseDate) {
-                        baseDate = expiracaoAtual;
-                    }
-                }
-            }
-
-            baseDate.setDate(baseDate.getDate() + diasAdicionais);
-
-            await userRef.set({
-                assinaturaAtiva: true,
-                nomePlano: nomePlano,
-                dataExpiracao: baseDate.toISOString()
-            }, { merge: true });
-
-            let telaBloqueio = document.getElementById('telaBloqueio');
-            let containerPrincipal = document.getElementById('containerPrincipal');
-            if (telaBloqueio) telaBloqueio.style.display = 'none';
-            if (containerPrincipal) containerPrincipal.classList.remove('bloqueado-geral');
-            
-            mudarTab('diario');
-        } catch (erro) {
-            console.error("Erro ao liberar acesso:", erro);
-        }
-
         let urlPagamento = "https://checkout.infinitepay.io/paulovictorrx7/GZtYH3OZso";
+        
+        // Abre a página de pagamento em uma nova aba
         window.open(urlPagamento, '_blank');
+        
+        alert("Redirecionando para o pagamento seguro. Assim que o pagamento for confirmado, seu acesso será liberado automaticamente!");
     }
 
     window.atualizarDiaSemanaPorData = function(idInputData, idSelectDiaSemana) {
@@ -1958,7 +1913,7 @@
     async function excluirDiaSemanal() {
         let isoStr = document.getElementById('editSemanaDataIso').value;
         if (!isoStr) return;
-        if (confirm("Deseja realmente excluir os dados deste dia?")) {
+        if (confirm("Deseja realmente excluir os lançamentos deste dia?")) {
             memoriaHistorico = memoriaHistorico.filter(h => h.data !== isoStr);
             await salvarNoFirestore();
             fecharEdicaoSemanal();
@@ -1967,34 +1922,35 @@
     }
 
     function renderizarMensal() {
-        let filtroInput = document.getElementById('filtroMesAno');
-        if (!filtroInput.value) {
-            let agora = new Date();
-            filtroInput.value = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+        let mesInput = document.getElementById('filtroMesAno');
+        if (!mesInput.value) {
+            let hoje = new Date();
+            mesInput.value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
         }
 
-        let [ano, mes] = filtroInput.value.split('-').map(Number);
-        let primeiroDiaMes = new Date(ano, mes - 1, 1);
-        let ultimoDiaMes = new Date(ano, mes, 0);
+        let anoMes = mesInput.value;
+        let [ano, mes] = anoMes.split('-').map(Number);
 
-        let container = document.getElementById('calendarDaysContainer');
-        container.innerHTML = '';
-
-        let diaSemanaInicio = primeiroDiaMes.getDay(); // 0 (Dom) a 6 (Sáb)
-        // Ajustando para a semana começar na Segunda-feira (1):
-        let offsetDias = diaSemanaInicio === 0 ? 6 : diaSemanaInicio - 1;
-
-        // Células vazias iniciais
-        for (let i = 0; i < offsetDias; i++) {
-            let vazioCell = document.createElement('div');
-            vazioCell.style.background = 'transparent';
-            vazioCell.style.border = 'none';
-            container.appendChild(vazioCell);
-        }
+        let primeiroDiaMesObj = new Date(ano, mes - 1, 1);
+        let ultimoDiaMesObj = new Date(ano, mes, 0);
 
         let brutoTotal = 0, kmTotal = 0, ipvaTotal = 0, manutTotal = 0, caixinhaTotal = 0, gasolinaTotal = 0, custosFixosTotal = 0, diasTrabalhados = 0;
+        let containerDias = document.getElementById('calendarDaysContainer');
+        containerDias.innerHTML = '';
 
-        for (let d = 1; d <= ultimoDiaMes.getDate(); d++) {
+        let diaSemanaInicio = primeiroDiaMesObj.getDay();
+        let espacosVazios = diaSemanaInicio === 0 ? 6 : diaSemanaInicio - 1;
+
+        for (let i = 0; i < espacosVazios; i++) {
+            let vazioCell = document.createElement('div');
+            vazioCell.className = 'calendar-day-cell';
+            vazioCell.style.background = '#141414';
+            vazioCell.style.borderColor = 'transparent';
+            vazioCell.style.cursor = 'default';
+            containerDias.appendChild(vazioCell);
+        }
+
+        for (let d = 1; d <= ultimoDiaMesObj.getDate(); d++) {
             let dataAtualObj = new Date(ano, mes - 1, d);
             let isoStr = `${ano}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             let registroDia = memoriaHistorico.find(h => h.data === isoStr);
@@ -2019,10 +1975,10 @@
                 <div class="cal-day-val">${valBrutoDia > 0 ? 'R$' + valBrutoDia.toFixed(0) : '-'}</div>
             `;
             cell.onclick = () => abrirEdicaoMensalTab(isoStr, registroDia);
-            container.appendChild(cell);
+            containerDias.appendChild(cell);
         }
 
-        let manutPagarMes = calcularManutencoesNoMes(filtroInput.value);
+        let manutPagarMes = calcularManutencoesNoMes(anoMes);
         let liquidoMes = brutoTotal - (gasolinaTotal + custosFixosTotal + ipvaTotal + manutTotal + caixinhaTotal) - manutPagarMes;
 
         document.getElementById('mesBrutoGrande').innerText = 'R$ ' + brutoTotal.toFixed(2);
@@ -2114,7 +2070,7 @@
     async function excluirDiaMensalTab() {
         let isoStr = document.getElementById('editMesDataIso').value;
         if (!isoStr) return;
-        if (confirm("Deseja realmente excluir os dados deste dia?")) {
+        if (confirm("Deseja realmente excluir os lançamentos deste dia?")) {
             memoriaHistorico = memoriaHistorico.filter(h => h.data !== isoStr);
             await salvarNoFirestore();
             fecharEdicaoMensal();
@@ -2128,7 +2084,7 @@
         container.innerHTML = '';
 
         if (memoriaHistorico.length === 0) {
-            container.innerHTML = '<div style="text-align: center; color: #777; padding: 15px;">Nenhum registro no histórico.</div>';
+            container.innerHTML = '<div style="text-align: center; color: #777; padding: 20px;">Nenhum lançamento no histórico.</div>';
             return;
         }
 
@@ -2139,26 +2095,27 @@
             let card = document.createElement('div');
             card.className = 'sub-box';
             card.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <strong style="color: var(--primary-color);">${dataFormatada} (${item.diaSemana || ''})</strong>
-                    <span style="font-size: 0.9rem; color: #fff; font-weight: bold;">Bruto: R$ ${(item.bruto || 0).toFixed(2)}</span>
+                    <span style="color: #fff; font-weight: bold;">Bruto: R$ ${(item.bruto || 0).toFixed(2)}</span>
                 </div>
-                <div style="font-size: 0.75rem; color: #aaa; margin-bottom: 6px;">
-                    KM Rodados: ${(item.kmFinal > item.kmInicial ? (item.kmFinal - item.kmInicial) : 0)} km | Combustível: R$ ${(item.valorAbastecido || 0).toFixed(2)}
+                <div style="font-size: 0.8rem; color: #aaa; margin-bottom: 8px;">
+                    KM Rodados: ${(item.kmFinal > item.kmInicial) ? (item.kmFinal - item.kmInicial) : 0} km | 
+                    Combustível: R$ ${(item.valorAbastecido || 0).toFixed(2)}
                 </div>
                 <div style="display: flex; gap: 6px;">
-                    <button class="btn-sm btn-edit" onclick="editarHistoricoRegistro('${item.id}')">Editar</button>
-                    <button class="btn-sm btn-delete" onclick="excluirHistoricoRegistro('${item.id}')">Excluir</button>
+                    <button class="btn-sm btn-edit" onclick="carregarParaEdicao('${item.id}')">Editar no Diário</button>
+                    <button class="btn-sm btn-delete" onclick="excluirDoHistorico('${item.id}')">Excluir</button>
                 </div>
             `;
             container.appendChild(card);
         });
     }
 
-    function editarHistoricoRegistro(id) {
+    function carregarParaEdicao(id) {
         let item = memoriaHistorico.find(h => h.id === id);
         if (!item) return;
-        mudarTab('diario');
+
         document.getElementById('dataRegistro').value = item.data || '';
         document.getElementById('diaSemana').value = item.diaSemana || 'Segunda-feira';
         document.getElementById('bruto').value = item.bruto || '';
@@ -2172,11 +2129,13 @@
         document.getElementById('reservaManutencao').value = item.reservaManutencao || '15.00';
         document.getElementById('reservaCaixinha').value = item.reservaCaixinha || '10.00';
         document.getElementById('editIndex').value = item.id;
-        document.getElementById('btnSalvar').innerText = 'Salvar Alterações do Dia';
+
+        mudarTab('diario');
+        calcular();
     }
 
-    async function excluirHistoricoRegistro(id) {
-        if (confirm("Deseja realmente excluir este registro do histórico?")) {
+    async function excluirDoHistorico(id) {
+        if (confirm("Deseja excluir este registro do histórico?")) {
             memoriaHistorico = memoriaHistorico.filter(h => h.id !== id);
             await salvarNoFirestore();
             renderizarHistorico();
@@ -2184,4 +2143,4 @@
     }
 </script>
 </body>
-                            </html>
+</html>
