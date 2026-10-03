@@ -1414,7 +1414,7 @@
         }
     }
 
-    // Função de assinatura atualizada para abrir direto no navegador (nova aba)
+    // Função de assinatura atualizada com os links corretos do InfinitePay
     function assinar(planoSelecionado) {
         let user = auth.currentUser;
         if (!user) {
@@ -1422,12 +1422,19 @@
             return;
         }
 
-        let urlPagamento = "https://checkout.infinitepay.io/paulovictorrx7/GZtYH3OZso";
-        
-        // Abre o link diretamente no navegador/nova aba
-        window.open(urlPagamento, '_blank');
-        
-        alert("Checkout aberto em nova aba. Conclua o pagamento e o sistema atualizará o seu acesso automaticamente logo em seguida.");
+        let urlPagamento = "";
+        if (planoSelecionado === 'semanal') {
+            urlPagamento = "https://checkout.infinitepay.io/paulovictorrx7/GZtYH3OZso";
+        } else if (planoSelecionado === 'mensal') {
+            urlPagamento = "https://checkout.infinitepay.io/paulovictorrx7/2AdnI0LcqA";
+        } else if (planoSelecionado === 'anual') {
+            urlPagamento = "https://checkout.infinitepay.io/paulovictorrx7/7fO8ssuEPk";
+        }
+
+        if (urlPagamento) {
+            window.open(urlPagamento, '_blank');
+            alert("Checkout aberto em nova aba. Conclua o pagamento e o sistema atualizará o seu acesso automaticamente logo em seguida.");
+        }
     }
 
     window.atualizarDiaSemanaPorData = function(idInputData, idSelectDiaSemana) {
