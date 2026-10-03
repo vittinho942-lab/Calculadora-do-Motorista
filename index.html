@@ -471,8 +471,8 @@
 <div id="telaBloqueio" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(18,18,18,0.98); z-index: 9999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
     <div style="background: var(--card-bg); border: 2px solid var(--danger-color); padding: 25px; border-radius: 12px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.8);">
         <h2 style="color: var(--danger-color); margin-top: 0;">Acesso Bloqueado</h2>
-        <p style="color: #ccc; font-size: 0.95rem; margin-bottom: 20px;" id="mensagemBloqueioTexto">
-            Detectamos uma alteração suspeita na data do seu dispositivo. Para garantir a segurança, o acesso foi bloqueado.
+        <p style="color: #ccc; font-size: 0.95rem; margin-bottom: 20px;">
+            Seu período gratuito acabou ou sua assinatura expirou. Para continuar utilizando todas as abas da Calculadora do Motorista, escolha um plano abaixo:
         </p>
         <div id="status-pagamento" style="color: var(--primary-color); font-weight: bold; margin-bottom: 15px; font-size: 0.9rem;"></div>
         
@@ -1134,68 +1134,24 @@
     let cronometroSegundos = 0;
     let cronometroRodando = false;
 
-    // VERIFICAÇÃO DE ALTERAÇÃO DE DATA DO DISPOSITIVO USANDO FIREBASE
-    async function verificarAlteracaoDataDispositivo(user) {
-        if (!user) return;
-        const userRef = db.collection('usuarios').doc(user.uid);
-        
-        // Data atual do dispositivo no formato YYYY-MM-DD
-        const dataDispositivoStr = obterDataLocalAtualISO();
-        const dataDispositivoObj = new Date(dataDispositivoStr + 'T00:00:00');
-
+    // VERIFICAÇÃO DE DATA E HORA AUTOMÁTICA VIA NTP/API DE TEMPO
+    async function verificarDataHoraAutomatica() {
         try {
-            const doc = await userRef.get();
-            if (doc.exists) {
-                const dados = doc.data();
-                const ultimaDataSalva = dados.ultimaDataDispositivo; // String YYYY-MM-DD ou timestamp/numero
-                const maxDataPassada = dados.maxDataDispositivo; // Maior data já registrada no Firebase
+            let resposta = await fetch('https://worldtimeapi.org/api/ip', { cache: 'no-store' });
+            if (!resposta.ok) return true; // Se houver instabilidade na rede, não trava indevidamente
+            let dados = await resposta.json();
+            let horarioServidor = new Date(dados.datetime).getTime();
+            let horarioLocal = Date.now();
+            let diferencaMinutos = Math.abs(horarioLocal - horarioServidor) / (1000 * 60);
 
-                if (ultimaDataSalva) {
-                    const ultimaObj = new Date(ultimaDataSalva + 'T00:00:00');
-                    // Se a data do dispositivo for menor que a última data salva, o usuário voltou o relógio do celular
-                    if (dataDispositivoObj < ultimaObj) {
-                        bloquearPorMudancaData("Detectamos que a data do seu celular foi alterada para o passado. O acesso foi bloqueado por segurança.");
-                        return;
-                    }
-                }
-
-                if (maxDataPassada) {
-                    const maxObj = new Date(maxDataPassada + 'T00:00:00');
-                    if (dataDispositivoObj < maxObj) {
-                        bloquearPorMudancaData("Detectamos que a data do seu celular foi alterada para o passado. O acesso foi bloqueado por segurança.");
-                        return;
-                    }
-                }
-
-                // Atualiza no Firebase a nova data/máxima data se for maior ou igual
-                let novoMax = maxDataPassada && dataDispositivoStr < maxDataPassada ? maxDataPassada : dataDispositivoStr;
-                if (!maxDataPassada || dataDispositivoStr > maxDataPassada) {
-                    novoMax = dataDispositivoStr;
-                }
-
-                await userRef.set({
-                    ultimaDataDispositivo: dataDispositivoStr,
-                    maxDataDispositivo: novoMax
-                }, { merge: true });
-
-            } else {
-                // Primeiro acesso do usuário, salva a data atual
-                await userRef.set({
-                    ultimaDataDispositivo: dataDispositivoStr,
-                    maxDataDispositivo: dataDispositivoStr
-                }, { merge: true });
+            // Se a diferença for maior que 3 minutos, o relógio está alterado/manual
+            if (diferencaMinutos > 3) {
+                alert("⚠️ Acesso Negado! A data e a hora do seu aparelho não estão configuradas como automáticas. Por favor, ajuste as configurações do seu celular para data e hora automáticas para criar conta e usar o aplicativo.");
+                return false;
             }
+            return true;
         } catch (e) {
-            console.error("Erro ao verificar data no Firebase:", e);
-        }
-    }
-
-    function bloquearPorMudancaData(mensagem) {
-        usuarioBloqueadoGeral = true;
-        document.getElementById('mensagemBloqueioTexto').innerText = mensagem;
-        document.getElementById('telaBloqueio').style.display = 'flex';
-        if (document.getElementById('containerPrincipal')) {
-            document.getElementById('containerPrincipal').style.display = 'none';
+            return true; // Falha de rede temporária não impede o uso, mas o app valida sempre que possível
         }
     }
 
@@ -1249,7 +1205,10 @@
         if (nomeTab === 'manutencaoCarro') renderizarManutencoesCarro();
     }
 
-    function mudarTabComVerificacao(nomeTab) {
+    async function mudarTabComVerificacao(nomeTab) {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+
         if (usuarioBloqueadoGeral && nomeTab !== 'planos') {
             document.getElementById('telaBloqueio').style.display = 'flex';
             return;
@@ -1345,7 +1304,10 @@
         salvarNoFirestore();
     }
 
-    function salvarDia() {
+    async function salvarDia() {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+
         let data = document.getElementById('dataRegistro').value;
         if (!data) { alert("Selecione a data do registro."); return; }
         
@@ -1433,7 +1395,10 @@
         }
     }
 
-    function salvarManutencaoCarro() {
+    async function salvarManutencaoCarro() {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+
         let servico = document.getElementById('manutServico').value.trim();
         if (!servico) { alert("Informe o serviço/peça realizada."); return; }
 
@@ -1592,33 +1557,6 @@
         return totalMes;
     }
 
-    function obterManutencoesNaDataExata(dataIso) {
-        let totalDia = 0;
-        memoriaManutencoes.forEach(m => {
-            if (m.vencimentoPeca && m.valorPeca > 0) {
-                let valorParcela = m.valorPeca / (m.parcelasPeca || 1);
-                let dataBase = new Date(m.vencimentoPeca + 'T00:00:00');
-                for (let i = 0; i < (m.parcelasPeca || 1); i++) {
-                    let dParcela = new Date(dataBase);
-                    dParcela.setMonth(dParcela.getMonth() + i);
-                    let isoP = dParcela.toISOString().substring(0, 10);
-                    if (isoP === dataIso) totalDia += valorParcela;
-                }
-            }
-            if (m.vencimentoObra && m.maoObra > 0) {
-                let valorParcelaObra = m.maoObra / (m.parcelasObra || 1);
-                let dataBaseObra = new Date(m.vencimentoObra + 'T00:00:00');
-                for (let i = 0; i < (m.parcelasObra || 1); i++) {
-                    let dParcelaObra = new Date(dataBaseObra);
-                    dParcelaObra.setMonth(dParcelaObra.getMonth() + i);
-                    let isoP = dParcelaObra.toISOString().substring(0, 10);
-                    if (isoP === dataIso) totalDia += valorParcelaObra;
-                }
-            }
-        });
-        return totalDia;
-    }
-
     function obterManutencoesNoIntervaloDias(inicioIso, fimIso) {
         let totalIntervalo = 0;
         let dIni = new Date(inicioIso + 'T00:00:00');
@@ -1768,7 +1706,10 @@
         document.getElementById('painelEdicaoSemanal').style.display = 'none';
     }
 
-    function salvarEdicaoSemanal() {
+    async function salvarEdicaoSemanal() {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+
         let isoStr = document.getElementById('editSemanaDataIso').value;
         let bruto = parseFloat(document.getElementById('editSemanaBruto').value) || 0;
         let kmIni = parseFloat(document.getElementById('editSemanaKmIni').value) || 0;
@@ -1803,7 +1744,10 @@
         alert("Alterações salvas com sucesso!");
     }
 
-    function excluirDiaSemanal() {
+    async function excluirDiaSemanal() {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+
         let isoStr = document.getElementById('editSemanaDataIso').value;
         if (confirm("Deseja realmente excluir os lançamentos deste dia?")) {
             memoriaHistorico = memoriaHistorico.filter(h => h.data !== isoStr);
@@ -1883,8 +1827,8 @@
         document.getElementById('mesGasolina').innerText = "R$ " + gasolinaTotal.toFixed(2);
         document.getElementById('mesCustosFixos').innerText = "R$ " + custosFixosTotal.toFixed(2);
 
-        let manutPagarMes = obterManutencoesNoMes(ano, String(mes).padStart(2, '0'));
-        document.getElementById('mesManutencaoPagar').innerText = "R$ " + manutPagarMes.toFixed(2);
+        let mesManutPagar = obterManutencoesNoMes(ano, String(mes).padStart(2, '0'));
+        document.getElementById('mesManutencaoPagar').innerText = "R$ " + mesManutPagar.toFixed(2);
 
         document.getElementById('mesDias').innerText = diasTrabalhados + " dias";
         document.getElementById('mesMediaDia').innerText = diasTrabalhados > 0 ? "R$ " + (liquidoTotal / diasTrabalhados).toFixed(2) : "R$ 0,00";
@@ -1931,7 +1875,10 @@
         document.getElementById('painelEdicaoMensal').style.display = 'none';
     }
 
-    function salvarEdicaoMensalTab() {
+    async function salvarEdicaoMensalTab() {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+
         let isoStr = document.getElementById('editMesDataIso').value;
         let bruto = parseFloat(document.getElementById('editMesBruto').value) || 0;
         let kmIni = parseFloat(document.getElementById('editMesKmIni').value) || 0;
@@ -1966,7 +1913,10 @@
         alert("Alterações salvas com sucesso!");
     }
 
-    function excluirDiaMensalTab() {
+    async function excluirDiaMensalTab() {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+
         let isoStr = document.getElementById('editMesDataIso').value;
         if (confirm("Deseja realmente excluir os lançamentos deste dia?")) {
             memoriaHistorico = memoriaHistorico.filter(h => h.data !== isoStr);
@@ -1976,69 +1926,142 @@
         }
     }
 
-    function renderizarHistorico() {
-        let container = document.getElementById('listaHistorico');
-        if (!container) return;
-        if (memoriaHistorico.length === 0) {
-            container.innerHTML = `<div style="text-align: center; color: #777; padding: 20px;">Nenhum registro encontrado.</div>`;
+    // AUTENTICAÇÃO COM VALIDAÇÃO DE HORA AUTOMÁTICA
+    async function fazerCadastroEmailSenha() {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+
+        let email = document.getElementById('loginEmail').value.trim();
+        let senha = document.getElementById('loginSenha').value;
+        if(!email || !senha) { alert("Preencha e-mail e senha para criar a conta."); return; }
+
+        auth.createUserWithEmailAndPassword(email, senha)
+            .then((res) => { alert("Conta criada com sucesso!"); })
+            .catch((err) => { alert("Erro ao criar conta: " + err.message); });
+    }
+
+    async function fazerLoginEmailSenha() {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+
+        let email = document.getElementById('loginEmail').value.trim();
+        let senha = document.getElementById('loginSenha').value;
+        if(!email || !senha) { alert("Preencha e-mail e senha."); return; }
+
+        auth.signInWithEmailAndPassword(email, senha)
+            .catch((err) => { alert("Erro ao entrar: " + err.message); });
+    }
+
+    document.getElementById('btnLogin').addEventListener('click', async () => {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+        auth.signInWithPopup(provider).catch(err => alert("Erro no Google: " + err.message));
+    });
+
+    document.getElementById('btnRegister').addEventListener('click', async () => {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+        auth.signInWithPopup(provider).catch(err => alert("Erro no Google: " + err.message));
+    });
+
+    function sairDaConta() {
+        auth.signOut().then(() => {
+            document.getElementById('containerPrincipal').style.display = 'none';
+            document.getElementById('telaLogin').style.display = 'flex';
+            document.getElementById('telaBloqueio').style.display = 'none';
+        });
+    }
+
+    // MONITORAMENTO DE ESTADO DE AUTENTICAÇÃO E SINCRONIZAÇÃO
+    auth.onAuthStateChanged(async (user) => {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) {
+            auth.signOut();
             return;
         }
 
-        memoriaHistorico.sort((a, b) => new Date(b.data) - new Date(a.data));
-
-        let html = '';
-        memoriaHistorico.forEach((item, index) => {
-            let dataFormatada = item.data ? item.data.split('-').reverse().join('/') : '-';
-            let bruto = item.bruto || 0;
-            let kmRodados = (item.kmFim > item.kmIni) ? (item.kmFim - item.kmIni) : 0;
-            let despesas = (item.valorAbast || 0) + (item.parcelaCarro || 0) + (item.seguroCarro || 0) + (item.rua || 0);
-            let liquido = bruto - despesas;
-
-            html += `
-                <div style="background: #181818; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <strong style="color: var(--primary-color);">${dataFormatada} (${item.diaSemana || ''})</strong>
-                        <div>
-                            <button class="btn-sm btn-edit" onclick="editarHistorico(${index})">Editar</button>
-                            <button class="btn-sm btn-delete" onclick="excluirHistorico(${index})">Excluir</button>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.85rem; color: #ccc;">Bruto: <b>R$ ${bruto.toFixed(2)}</b> | Líquido: <b style="color: ${liquido >= 0 ? 'var(--primary-color)' : 'var(--danger-color)'}">R$ ${liquido.toFixed(2)}</b></div>
-                    <div style="font-size: 0.8rem; color: #aaa;">KM: ${kmRodados} km | Horas: ${item.horas || 0}h</div>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
-    }
-
-    function editarHistorico(index) {
-        let item = memoriaHistorico[index];
-        mudarTab('diario');
-        document.getElementById('dataRegistro').value = item.data || '';
-        document.getElementById('diaSemana').value = item.diaSemana || 'Segunda-feira';
-        document.getElementById('bruto').value = item.bruto || '';
-        document.getElementById('kmInicial').value = item.kmIni || '';
-        document.getElementById('kmFinal').value = item.kmFim || '';
-        document.getElementById('horasOnline').value = item.horas || '0.00';
-        document.getElementById('litros').value = item.litros || '';
-        document.getElementById('valorAbastecido').value = item.valorAbast || '';
-        document.getElementById('gastosRua').value = item.rua || '';
-        document.getElementById('parcelaCarro').value = item.parcelaCarro || '';
-        document.getElementById('seguroCarro').value = item.seguroCarro || '';
-        document.getElementById('reservaIpva').value = item.ipva || '10.00';
-        document.getElementById('reservaManutencao').value = item.manut || '15.00';
-        document.getElementById('reservaCaixinha').value = item.caixinha || '10.00';
-        document.getElementById('editIndex').value = index;
-        document.getElementById('btnSalvar').innerText = "Atualizar Lançamento";
-        calcular();
-    }
-
-    function excluirHistorico(index) {
-        if (confirm("Deseja realmente excluir este registro?")) {
-            memoriaHistorico.splice(index, 1);
-            salvarNoFirestore();
-            renderizarHistorico();
+        if (user) {
+            document.getElementById('telaLogin').style.display = 'none';
+            document.getElementById('containerPrincipal').style.display = 'block';
+            document.getElementById('menuEmailUsuario').innerText = user.email || user.displayName || "Conectado";
+            carregarDadosFirestore(user.uid);
+        } else {
+            document.getElementById('containerPrincipal').style.display = 'none';
+            document.getElementById('telaLogin').style.display = 'flex';
         }
+    });
+
+    function carregarDadosFirestore(uid) {
+        if(unsubscribeFirestore) unsubscribeFirestore();
+        let ref = db.collection('usuarios').doc(uid);
+        unsubscribeFirestore = ref.onSnapshot((doc) => {
+            if (doc.exists) {
+                let dados = doc.data();
+                memoriaHistorico = dados.historico || [];
+                memoriaManutencoes = dados.manutencoes || [];
+                if (dados.config) memoriaConfig = dados.config;
+
+                document.getElementById('cfgParcelaMensal').value = memoriaConfig.parcela || 1375;
+                document.getElementById('cfgSeguroMensal').value = memoriaConfig.seguro || 0;
+                document.getElementById('cfgDiasMes').value = memoriaConfig.diasMes || 26;
+                atualizarValoresAutomaticosDia();
+
+                // Verificar Assinatura
+                verificarAssinaturaUsuario(dados);
+            } else {
+                ref.set({ historico: [], manutencoes: [], config: memoriaConfig, planoExpiracao: Date.now() + (3 * 24 * 60 * 60 * 1000) });
+            }
+        });
+    }
+
+    function salvarNoFirestore() {
+        let user = auth.currentUser;
+        if (!user) return;
+        db.collection('usuarios').doc(user.uid).set({
+            historico: memoriaHistorico,
+            manutencoes: memoriaManutencoes,
+            config: memoriaConfig
+        }, { merge: true });
+    }
+
+    function verificarAssinaturaUsuario(dados) {
+        let agora = Date.now();
+        let expiracao = dados.planoExpiracao || 0;
+        let diffDias = Math.ceil((expiracao - agora) / (1000 * 60 * 60 * 24));
+
+        let txtStatus = document.getElementById('menuStatusTexto');
+        let txtDias = document.getElementById('statusPlanoDias');
+        let divBloqueio = document.getElementById('telaBloqueio');
+
+        if (diffDias > 0) {
+            usuarioBloqueadoGeral = false;
+            divBloqueio.style.display = 'none';
+            if (txtStatus) { txtStatus.innerText = `Ativo (${diffDias} dias restantes)`; txtStatus.style.color = "var(--primary-color)"; }
+            if (txtDias) { txtDias.innerText = `Sua assinatura está ativa por mais ${diffDias} dias.`; }
+        } else {
+            usuarioBloqueadoGeral = true;
+            divBloqueio.style.display = 'flex';
+            if (txtStatus) { txtStatus.innerText = "Expirado / Bloqueado"; txtStatus.style.color = "var(--danger-color)"; }
+            if (txtDias) { txtDias.innerText = "Seu período de acesso expirou."; }
+        }
+    }
+
+    async function assinar(tipo) {
+        let horarioValido = await verificarDataHoraAutomatica();
+        if (!horarioValido) return;
+
+        let user = auth.currentUser;
+        if (!user) return;
+        let diasAdicionar = tipo === 'semanal' ? 7 : (tipo === 'mensal' ? 30 : 365);
+        let novaExpiracao = Date.now() + (diasAdicionar * 24 * 60 * 60 * 1000);
+
+        db.collection('usuarios').doc(user.uid).set({
+            planoExpiracao: novaExpiracao
+        }, { merge: true }).then(() => {
+            alert("Plano ativado com sucesso!");
+            document.getElementById('telaBloqueio').style.display = 'none';
+            mudarTab('diario');
+        });
     }
 
     function toggleMenuDropdown() {
@@ -2046,7 +2069,7 @@
     }
 
     window.onclick = function(event) {
-        if (!event.target.matches('.menu-dots-btn')) {
+        if (!event.target.matches('.menu-dots-btn') && !event.target.closest('.menu-dropdown')) {
             let dropdowns = document.getElementsByClassName("menu-dropdown");
             for (let i = 0; i < dropdowns.length; i++) {
                 let openDropdown = dropdowns[i];
@@ -2057,159 +2080,20 @@
         }
     }
 
-    // FIREBASE AUTH & FIRESTORE SYNC
-    function salvarNoFirestore() {
-        const user = auth.currentUser;
-        if (!user) return;
-        db.collection('usuarios').doc(user.uid).set({
-            historico: memoriaHistorico,
-            manutencoes: memoriaManutencoes,
-            config: memoriaConfig
-        }, { merge: true }).catch(err => {
-            console.error("Erro ao salvar no Firestore:", err);
-        });
-    }
-
-    function carregarDadosFirestore(user) {
-        if (unsubscribeFirestore) unsubscribeFirestore();
-        const userRef = db.collection('usuarios').doc(user.uid);
-        
-        unsubscribeFirestore = userRef.onSnapshot(doc => {
-            if (doc.exists) {
-                const dados = doc.data();
-                memoriaHistorico = dados.historico || [];
-                memoriaManutencoes = dados.manutencoes || [];
-                if (dados.config) {
-                    memoriaConfig = dados.config;
-                    document.getElementById('cfgParcelaMensal').value = memoriaConfig.parcela || 1375;
-                    document.getElementById('cfgSeguroMensal').value = memoriaConfig.seguro || 0;
-                    document.getElementById('cfgDiasMes').value = memoriaConfig.diasMes || 26;
-                }
-                atualizarValoresAutomaticosDia();
-            }
-            verificarAssinatura(user);
-        }, err => {
-            console.error("Erro ao carregar dados:", err);
-        });
-    }
-
-    function verificarAssinatura(user) {
-        const userRef = db.collection('usuarios').doc(user.uid);
-        userRef.get().then(doc => {
-            let statusTexto = "Ativo (Plano Gratuito / Teste)";
-            let diasRestantesStr = "Acesso Liberado";
-            let bloqueado = false;
-
-            if (doc.exists && doc.data().assinaturaFim) {
-                let fim = doc.data().assinaturaFim.toDate();
-                let agora = new Date();
-                let diffTime = fim - agora;
-                let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (diffDays > 0) {
-                    diasRestantesStr = `Plano ativo (${diffDays} dias restantes)`;
-                    statusTexto = `Ativo até ${fim.toLocaleDateString()}`;
-                } else {
-                    bloqueado = true;
-                    diasRestantesStr = "Assinatura Expirada";
-                    statusTexto = "Expirado";
-                }
-            }
-
-            document.getElementById('menuEmailUsuario').innerText = user.email;
-            document.getElementById('menuStatusTexto').innerText = statusTexto;
-            document.getElementById('statusPlanoDias').innerText = diasRestantesStr;
-
-            if (bloqueado) {
-                usuarioBloqueadoGeral = true;
-                document.getElementById('telaBloqueio').style.display = 'flex';
-                document.getElementById('containerPrincipal').style.display = 'none';
-            } else {
-                usuarioBloqueadoGeral = false;
-                document.getElementById('telaBloqueio').style.display = 'none';
-                document.getElementById('containerPrincipal').style.display = 'block';
-            }
-        });
-    }
-
-    function fazerLoginEmailSenha() {
-        let email = document.getElementById('loginEmail').value;
-        let senha = document.getElementById('loginSenha').value;
-        if(!email || !senha) { alert("Preencha e-mail e senha."); return; }
-        auth.signInWithEmailAndPassword(email, senha).catch(err => alert("Erro ao entrar: " + err.message));
-    }
-
-    function fazerCadastroEmailSenha() {
-        let email = document.getElementById('loginEmail').value;
-        let senha = document.getElementById('loginSenha').value;
-        if(!email || !senha) { alert("Preencha e-mail e senha."); return; }
-        auth.createUserWithEmailAndPassword(email, senha).catch(err => alert("Erro ao cadastrar: " + err.message));
-    }
-
-    function abrirModalEsqueciSenha() {
-        document.getElementById('modalEsqueciSenha').style.display = 'flex';
-    }
-
-    function fecharModalEsqueciSenha() {
-        document.getElementById('modalEsqueciSenha').style.display = 'none';
-    }
-
+    function abrirModalEsqueciSenha() { document.getElementById('modalEsqueciSenha').style.display = 'flex'; }
+    function fecharModalEsqueciSenha() { document.getElementById('modalEsqueciSenha').style.display = 'none'; }
     function enviarEmailRecuperacao() {
-        let email = document.getElementById('emailRecuperacao').value;
-        if(!email) { alert("Digite seu e-mail."); return; }
-        auth.sendPasswordResetEmail(email).then(() => {
-            alert("E-mail de recuperação enviado com sucesso!");
-            fecharModalEsqueciSenha();
-        }).catch(err => alert("Erro: " + err.message));
+        let email = document.getElementById('emailRecuperacao').value.trim();
+        if(!email) { alert("Digite o e-mail cadastrado."); return; }
+        auth.sendPasswordResetEmail(email)
+            .then(() => { alert("E-mail de redefinição enviado com sucesso!"); fecharModalEsqueciSenha(); })
+            .catch((err) => { alert("Erro ao enviar e-mail: " + err.message); });
     }
 
-    function sairDaConta() {
-        auth.signOut().then(() => {
-            document.getElementById('telaLogin').style.display = 'flex';
-            document.getElementById('containerPrincipal').style.display = 'none';
-            document.getElementById('telaBloqueio').style.display = 'none';
-        });
-    }
-
-    function assinar(plano) {
-        alert("Para assinar o plano " + plano + ", entre em contato pelo WhatsApp (61) 99168-1715 ou e-mail Vittinho942@gmail.com.");
-    }
-
-    document.getElementById('btnLogin').onclick = () => {
-        auth.signInWithPopup(provider).catch(err => alert("Erro Google: " + err.message));
+    window.onload = function() {
+        inicializarDataHoje();
+        calcular();
     };
-    document.getElementById('btnRegister').onclick = () => {
-        auth.signInWithPopup(provider).catch(err => alert("Erro Google: " + err.message));
-    };
-
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            document.getElementById('telaLogin').style.display = 'none';
-            // Verifica alteração de data do dispositivo antes de liberar o app
-            verificarAlteracaoDataDispositivo(user).then(() => {
-                if (!usuarioBloqueadoGeral) {
-                    document.getElementById('containerPrincipal').style.display = 'block';
-                    carregarDadosFirestore(user);
-                    inicializarDataHoje();
-                    calcular();
-                }
-            });
-        } else {
-            document.getElementById('telaLogin').style.display = 'flex';
-            document.getElementById('containerPrincipal').style.display = 'none';
-            document.getElementById('telaBloqueio').style.display = 'none';
-            if (unsubscribeFirestore) unsubscribeFirestore();
-        }
-    });
-
-    function atualizarDiaSemanaPorData(idInputData, idSelectDia) {
-        let val = document.getElementById(idInputData).value;
-        if (!val) return;
-        let partes = val.split('-');
-        let d = new Date(partes[0], partes[1] - 1, partes[2]);
-        let dias = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-        document.getElementById(idSelectDia).value = dias[d.getDay()];
-    }
 </script>
 </body>
 </html>
