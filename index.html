@@ -1648,6 +1648,13 @@
             `;
         }
 
+        let inicioIso = segundaFeiraBase.toISOString().substring(0, 10);
+        let fimIso = domingoBase.toISOString().substring(0, 10);
+        let manutPagarSemana = obterManutencoesNoIntervaloDias(inicioIso, fimIso);
+
+        // DESCONTA A MANUTENÇÃO DO CRÉDITO/PARCELADA NO LÍQUIDO TOTAL DA SEMANA
+        liquidoTotal -= manutPagarSemana;
+
         document.getElementById('semanaBarrinhaDias').innerHTML = barrinhaHtml;
         document.getElementById('semanaBrutoGrande').innerText = "R$ " + brutoTotal.toFixed(2);
         
@@ -1663,10 +1670,6 @@
         document.getElementById('semanaCaixinha').innerText = "R$ " + caixinhaTotal.toFixed(2);
         document.getElementById('semanaGasolina').innerText = "R$ " + gasolinaTotal.toFixed(2);
         document.getElementById('semanaCustosFixos').innerText = "R$ " + custosFixosTotal.toFixed(2);
-
-        let inicioIso = segundaFeiraBase.toISOString().substring(0, 10);
-        let fimIso = domingoBase.toISOString().substring(0, 10);
-        let manutPagarSemana = obterManutencoesNoIntervaloDias(inicioIso, fimIso);
         document.getElementById('semanaManutencaoPagar').innerText = "R$ " + manutPagarSemana.toFixed(2);
 
         document.getElementById('semanaDias').innerText = diasTrabalhados + " dias";
@@ -1819,6 +1822,11 @@
             }
         }
 
+        let manutPagarMes = obterManutencoesNoMes(ano, mes);
+        
+        // DESCONTA A MANUTENÇÃO DO CRÉDITO/PARCELADA NO LÍQUIDO TOTAL DO MÊS
+        liquidoTotal -= manutPagarMes;
+
         document.getElementById('calendarDaysContainer').innerHTML = html;
         document.getElementById('mesBrutoGrande').innerText = "R$ " + brutoTotal.toFixed(2);
         
@@ -1834,8 +1842,6 @@
         document.getElementById('mesCaixinha').innerText = "R$ " + caixinhaTotal.toFixed(2);
         document.getElementById('mesGasolina').innerText = "R$ " + gasolinaTotal.toFixed(2);
         document.getElementById('mesCustosFixos').innerText = "R$ " + custosFixosTotal.toFixed(2);
-
-        let manutPagarMes = obterManutencoesNoMes(ano, mes);
         document.getElementById('mesManutencaoPagar').innerText = "R$ " + manutPagarMes.toFixed(2);
 
         document.getElementById('mesDias').innerText = diasTrabalhados + " dias";
@@ -1932,69 +1938,67 @@
         let container = document.getElementById('listaHistorico');
         if (!container) return;
         if (memoriaHistorico.length === 0) {
-            container.innerHTML = `<div style="text-align: center; color: #777; padding: 20px;">Nenhum lançamento no histórico.</div>`;
+            container.innerHTML = `<div style="text-align: center; color: #777; padding: 20px;">Nenhum histórico registrado.</div>`;
             return;
         }
 
-        let historicoOrdenado = [...memoriaHistorico].sort((a,b) => new Date(b.data) - new Date(a.data));
+        let historicoOrdenado = [...memoriaHistorico].sort((a, b) => new Date(b.data) - new Date(a.data));
         let html = '';
 
-        historicoOrdenado.forEach((item) => {
-            let indexReal = memoriaHistorico.findIndex(h => h.data === item.data);
+        historicoOrdenado.forEach(item => {
+            let dataFormatada = item.data.split('-').reverse().join('/');
+            let bruto = item.bruto || 0;
+            let kmRod = (item.kmFim > item.kmIni) ? (item.kmFim - item.kmIni) : 0;
             let despesas = (item.valorAbast || 0) + (item.parcelaCarro || 0) + (item.seguroCarro || 0) + (item.rua || 0);
             let reservas = (item.ipva || 0) + (item.manut || 0) + (item.caixinha || 0);
-            let liquido = ((item.bruto || 0) - despesas) + reservas;
+            let liquido = (bruto - despesas) + reservas;
 
             html += `
-                <div style="background: #181818; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <strong style="color: var(--primary-color);">${item.data.split('-').reverse().join('/')} (${item.diaSemana || ''})</strong>
+                <div style="background: #181818; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <strong style="color: var(--primary-color);">${dataFormatada} (${item.diaSemana})</strong>
                         <div>
-                            <button class="btn-sm btn-edit" onclick="carregarEdicaoDiaria(${indexReal})">Editar</button>
-                            <button class="btn-sm btn-delete" onclick="excluirHistorico(${indexReal})">Excluir</button>
+                            <button class="btn-sm btn-edit" onclick="carregarEdicaoHistorico('${item.data}')">Editar</button>
+                            <button class="btn-sm btn-delete" onclick="excluirHistoricoItem('${item.data}')">Excluir</button>
                         </div>
                     </div>
-                    <div style="font-size: 0.85rem; color: #ccc; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                        <div>Bruto: <b>R$ ${(item.bruto || 0).toFixed(2)}</b></div>
-                        <div>Líquido: <b style="color: ${liquido >= 0 ? 'var(--primary-color)' : 'var(--danger-color)'}">R$ ${liquido.toFixed(2)}</b></div>
-                        <div>KM Rodados: ${(item.kmFim > item.kmIni) ? (item.kmFim - item.kmIni) : 0} km</div>
-                        <div>Horas: ${(item.horas || 0).toFixed(2)}h</div>
-                    </div>
+                    <div style="font-size: 0.85rem; color: #ccc;">Bruto: <b>R$ ${bruto.toFixed(2)}</b> | KM: ${kmRod} km | Líquido: <b style="color: ${liquido >= 0 ? 'var(--primary-color)' : 'var(--danger-color)'}">R$ ${liquido.toFixed(2)}</b></div>
                 </div>
             `;
         });
         container.innerHTML = html;
     }
 
-    function carregarEdicaoDiaria(index) {
-        let item = memoriaHistorico[index];
+    function carregarEdicaoHistorico(isoStr) {
+        let item = memoriaHistorico.find(h => h.data === isoStr);
         if (!item) return;
 
-        document.getElementById('dataRegistro').value = item.data || '';
-        document.getElementById('diaSemana').value = item.diaSemana || 'Segunda-feira';
-        document.getElementById('bruto').value = item.bruto || '';
-        document.getElementById('kmInicial').value = item.kmIni || '';
-        document.getElementById('kmFinal').value = item.kmFim || '';
-        document.getElementById('horasOnline').value = item.horas || '0.00';
-        document.getElementById('litros').value = item.litros || '';
-        document.getElementById('valorAbastecido').value = item.valorAbast || '';
-        document.getElementById('gastosRua').value = item.rua || '';
-        document.getElementById('parcelaCarro').value = item.parcelaCarro || '';
-        document.getElementById('seguroCarro').value = item.seguroCarro || '';
-        document.getElementById('reservaIpva').value = item.ipva || '';
-        document.getElementById('reservaManutencao').value = item.manut || '';
-        document.getElementById('reservaCaixinha').value = item.caixinha || '';
-
-        document.getElementById('editIndex').value = index;
-        document.getElementById('btnSalvar').innerText = "Atualizar Lançamento";
-
         mudarTab('diario');
+        document.getElementById('dataRegistro').value = item.data;
+        document.getElementById('diaSemana').value = item.diaSemana;
+        document.getElementById('bruto').value = item.bruto || "";
+        document.getElementById('kmInicial').value = item.kmIni || "";
+        document.getElementById('kmFinal').value = item.kmFim || "";
+        document.getElementById('horasOnline').value = item.horas || "";
+        document.getElementById('litros').value = item.litros || "";
+        document.getElementById('valorAbastecido').value = item.valorAbast || "";
+        document.getElementById('gastosRua').value = item.rua || "";
+        document.getElementById('parcelaCarro').value = item.parcelaCarro || "";
+        document.getElementById('seguroCarro').value = item.seguroCarro || "";
+        document.getElementById('reservaIpva').value = item.ipva || "";
+        document.getElementById('reservaManutencao').value = item.manut || "";
+        document.getElementById('reservaCaixinha').value = item.caixinha || "";
+
+        let idx = memoriaHistorico.findIndex(h => h.data === isoStr);
+        document.getElementById('editIndex').value = idx;
+        document.getElementById('btnSalvar').innerText = "Atualizar Lançamento no Histórico";
         calcular();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function excluirHistorico(index) {
-        if (confirm("Deseja realmente excluir este lançamento?")) {
-            memoriaHistorico.splice(index, 1);
+    function excluirHistoricoItem(isoStr) {
+        if (confirm("Deseja excluir este registro do histórico?")) {
+            memoriaHistorico = memoriaHistorico.filter(h => h.data !== isoStr);
             salvarNoFirestore();
             renderizarHistorico();
         }
@@ -2005,56 +2009,74 @@
         menu.classList.toggle('show');
     }
 
+    window.onclick = function(event) {
+        if (!event.target.matches('.menu-dots-btn')) {
+            let dropdowns = document.getElementsByClassName("menu-dropdown");
+            for (let i = 0; i < dropdowns.length; i++) {
+                let openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show')) {
+                    openDropdown.classList.remove('show');
+                }
+            }
+        }
+    }
+
     function salvarNoFirestore() {
         let user = auth.currentUser;
         if (!user) return;
-
-        db.collection("motoristas").doc(user.uid).set({
+        let dados = {
             historico: memoriaHistorico,
             manutencoes: memoriaManutencoes,
             config: memoriaConfig
-        }, { merge: true }).catch(err => {
-            console.error("Erro ao salvar dados: ", err);
+        };
+        db.collection("usuarios").doc(user.uid).set(dados, { merge: true }).catch(err => {
+            console.error("Erro ao salvar no Firestore:", err);
         });
     }
 
-    function carregarDadosFirestore(user) {
-        if (unsubscribeFirestore) unsubscribeFirestore();
-
-        unsubscribeFirestore = db.collection("motoristas").doc(user.uid).onSnapshot((doc) => {
+    function carregarDoFirestore(user) {
+        db.collection("usuarios").doc(user.uid).get().then(doc => {
             if (doc.exists) {
                 let data = doc.data();
-                memoriaHistorico = data.historico || [];
-                memoriaManutencoes = data.manutencoes || [];
+                if (data.historico) memoriaHistorico = data.historico;
+                if (data.manutencoes) memoriaManutencoes = data.manutencoes;
                 if (data.config) {
                     memoriaConfig = data.config;
-                    document.getElementById('cfgParcelaMensal').value = memoriaConfig.parcela || 1375;
-                    document.getElementById('cfgSeguroMensal').value = memoriaConfig.seguro || 0;
-                    document.getElementById('cfgDiasMes').value = memoriaConfig.diasMes || 26;
+                    if (document.getElementById('cfgParcelaMensal')) document.getElementById('cfgParcelaMensal').value = memoriaConfig.parcela || 1375;
+                    if (document.getElementById('cfgSeguroMensal')) document.getElementById('cfgSeguroMensal').value = memoriaConfig.seguro || 0;
+                    if (document.getElementById('cfgDiasMes')) document.getElementById('cfgDiasMes').value = memoriaConfig.diasMes || 26;
                 }
-            } else {
-                memoriaHistorico = [];
-                memoriaManutencoes = [];
             }
             atualizarValoresAutomaticosDia();
-            inicializarDataHoje();
+            document.getElementById('telaLogin').style.display = 'none';
+            document.getElementById('containerPrincipal').style.display = 'block';
+            mudarTab('diario');
+        }).catch(err => {
+            console.error("Erro ao carregar dados:", err);
+            document.getElementById('telaLogin').style.display = 'none';
+            document.getElementById('containerPrincipal').style.display = 'block';
+            mudarTab('diario');
         });
     }
 
     function fazerLoginEmailSenha() {
-        let email = document.getElementById('loginEmail').value;
+        let email = document.getElementById('loginEmail').value.trim();
         let senha = document.getElementById('loginSenha').value;
-        if(!email || !senha) { alert("Preencha e-mail e senha."); return; }
-
-        auth.signInWithEmailAndPassword(email, senha).catch(err => alert("Erro ao entrar: " + err.message));
+        if (!email || !senha) { alert("Preencha e-mail e senha."); return; }
+        
+        auth.signInWithEmailAndPassword(email, senha).catch(err => {
+            alert("Erro ao fazer login: " + err.message);
+        });
     }
 
     function fazerCadastroEmailSenha() {
-        let email = document.getElementById('loginEmail').value;
+        let email = document.getElementById('loginEmail').value.trim();
         let senha = document.getElementById('loginSenha').value;
-        if(!email || !senha) { alert("Preencha e-mail e senha para cadastrar."); return; }
+        if (!email || !senha) { alert("Preencha e-mail e senha para cadastrar."); return; }
 
-        auth.createUserWithEmailAndPassword(email, senha).catch(err => alert("Erro ao cadastrar: " + err.message));
+        auth.createUserWithEmailAndPassword(email, senha).catch(err => {
+            alert("Erro ao criar conta: " + err.message);
+        });
     }
 
     function abrirModalEsqueciSenha() {
@@ -2066,46 +2088,49 @@
     }
 
     function enviarEmailRecuperacao() {
-        let email = document.getElementById('emailRecuperacao').value;
-        if(!email) { alert("Digite o e-mail de recuperação."); return; }
+        let email = document.getElementById('emailRecuperacao').value.trim();
+        if (!email) { alert("Digite seu e-mail de recuperação."); return; }
 
         auth.sendPasswordResetEmail(email).then(() => {
             alert("E-mail de redefinição de senha enviado com sucesso!");
             fecharModalEsqueciSenha();
-        }).catch(err => alert("Erro: " + err.message));
-    }
-
-    function sairDaConta() {
-        auth.signOut();
+        }).catch(err => {
+            alert("Erro ao enviar e-mail: " + err.message);
+        });
     }
 
     document.getElementById('btnLogin').addEventListener('click', () => {
-        auth.signInWithPopup(provider).catch(err => alert("Erro login Google: " + err.message));
+        auth.signInWithPopup(provider).catch(err => {
+            alert("Erro no login com Google: " + err.message);
+        });
     });
 
     document.getElementById('btnRegister').addEventListener('click', () => {
-        auth.signInWithPopup(provider).catch(err => alert("Erro cadastro Google: " + err.message));
+        auth.signInWithPopup(provider).catch(err => {
+            alert("Erro no cadastro com Google: " + err.message);
+        });
     });
 
-    auth.onAuthStateChanged((user) => {
+    function sairDaConta() {
+        auth.signOut().then(() => {
+            location.reload();
+        });
+    }
+
+    auth.onAuthStateChanged(user => {
         if (user) {
-            document.getElementById('telaLogin').style.display = 'none';
-            document.getElementById('containerPrincipal').style.display = 'block';
-            document.getElementById('menuEmailUsuario').innerText = user.email || user.displayName || "Usuário Conectado";
+            document.getElementById('menuEmailUsuario').innerText = user.email || user.displayName || "Conectado";
             document.getElementById('menuStatusTexto').innerText = "Ativo (Plano Liberado)";
-            document.getElementById('statusPlanoDias').innerText = "Sua assinatura está ativa e liberada!";
-            
-            carregarDadosFirestore(user);
+            document.getElementById('statusPlanoDias').innerText = "Plano Ativo / Acesso Total Liberado";
+            carregarDoFirestore(user);
         } else {
-            if (unsubscribeFirestore) unsubscribeFirestore();
-            document.getElementById('containerPrincipal').style.display = 'none';
             document.getElementById('telaLogin').style.display = 'flex';
+            document.getElementById('containerPrincipal').style.display = 'none';
         }
     });
 
     window.onload = function() {
         inicializarDataHoje();
-        calcular();
     };
 </script>
 </body>
