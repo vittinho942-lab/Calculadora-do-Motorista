@@ -628,7 +628,7 @@
             <div class="result-item"><span>Faturamento por KM:</span> <span id="resPorKm">R$ 0,00 /km</span></div>
             
             <div class="sobra-livre-box">
-                <div style="font-size: 0.8rem; color: #ccc; text-transform: uppercase;">Quanto Sobra Livre Hoje</div>
+                <div style="font-size: 0.8rem; color: #ccc; text-transform: uppercase;">Quanto Sobra Líquido Hoje</div>
                 <div class="sobra-livre-val" id="resLiquido">R$ 0,00</div>
             </div>
         </div>
@@ -889,7 +889,7 @@
         </div>
 
         <div class="sobra-livre-box" style="margin-top: 0; margin-bottom: 12px;">
-            <div style="font-size: 0.8rem; color: #ccc; text-transform: uppercase;">Quanto Sobrou na Semana (Líquido)</div>
+            <div style="font-size: 0.8rem; color: #ccc; text-transform: uppercase;">Quanto Sobrou na Semana (Líquido Total)</div>
             <div class="sobra-livre-val" id="semanaLiquido">R$ 0,00</div>
         </div>
 
@@ -1043,7 +1043,7 @@
         </div>
 
         <div class="sobra-livre-box" style="margin-top: 0; margin-bottom: 12px;">
-            <div style="font-size: 0.8rem; color: #ccc; text-transform: uppercase;">Quanto Sobrou no Mês (Líquido)</div>
+            <div style="font-size: 0.8rem; color: #ccc; text-transform: uppercase;">Quanto Sobrou no Mês (Líquido Total)</div>
             <div class="sobra-livre-val" id="mesLiquido">R$ 0,00</div>
         </div>
 
@@ -1197,7 +1197,6 @@
         mudarTab('planos');
     }
 
-    // FUNÇÃO DE ASSINATURA CORRIGIDA: AGUARDA APROVAÇÃO DO PAGAMENTO ANTES DE LIBERAR O ACESSO
     function assinar(plano) {
         let nomePlano = plano.charAt(0).toUpperCase() + plano.slice(1);
         let valorPlano = plano === 'semanal' ? 'R$ 9,90' : (plano === 'mensal' ? 'R$ 29,90' : 'R$ 199,90');
@@ -1207,7 +1206,6 @@
 
         alert(`Cobrança do Plano ${nomePlano} gerada com sucesso! \n\nO seu acesso será liberado automaticamente assim que o pagamento for aprovado.`);
         
-        // Mantém o status pendente ou bloqueado até que o pagamento seja confirmado externamente ou via webhook/Firestore
         usuarioBloqueadoGeral = true;
         document.getElementById('telaBloqueio').style.display = 'flex';
         document.getElementById('status-pagamento').innerText = `Aguardando confirmação de pagamento do Plano ${nomePlano}...`;
@@ -1247,11 +1245,18 @@
         let seguroCarro = parseFloat(document.getElementById('seguroCarro').value) || 0;
         let horasOnline = parseFloat(document.getElementById('horasOnline').value) || 0;
 
+        let reservaIpva = parseFloat(document.getElementById('reservaIpva').value) || 0;
+        let reservaManutencao = parseFloat(document.getElementById('reservaManutencao').value) || 0;
+        let reservaCaixinha = parseFloat(document.getElementById('reservaCaixinha').value) || 0;
+        let totalReservas = reservaIpva + reservaManutencao + reservaCaixinha;
+
         let custosFixosDia = parcelaCarro + seguroCarro;
         let totalDespesas = valorAbast + custosFixosDia + gastosRua;
-        let liquido = bruto - totalDespesas;
+        
+        let liquidoBase = bruto - totalDespesas;
+        let liquidoTotal = liquidoBase + totalReservas; // Soma o total livre + reservas
 
-        let mediaHora = horasOnline > 0 ? (liquido / horasOnline) : 0;
+        let mediaHora = horasOnline > 0 ? (liquidoTotal / horasOnline) : 0;
         let mediaKm = kmRodados > 0 ? (bruto / kmRodados) : 0;
 
         document.getElementById('resKm').innerText = kmRodados + " km";
@@ -1262,8 +1267,8 @@
         document.getElementById('resPorKm').innerText = "R$ " + mediaKm.toFixed(2) + " /km";
 
         let elLiquido = document.getElementById('resLiquido');
-        elLiquido.innerText = "R$ " + liquido.toFixed(2);
-        elLiquido.style.color = liquido >= 0 ? "var(--primary-color)" : "var(--danger-color)";
+        elLiquido.innerText = "R$ " + liquidoTotal.toFixed(2);
+        elLiquido.style.color = liquidoTotal >= 0 ? "var(--primary-color)" : "var(--danger-color)";
     }
 
     function toggleCronometro() {
@@ -1619,7 +1624,10 @@
                 custosFixosTotal += ((registro.parcelaCarro || 0) + (registro.seguroCarro || 0));
                 
                 let despesasDia = (registro.valorAbast || 0) + (registro.parcelaCarro || 0) + (registro.seguroCarro || 0) + (registro.rua || 0);
-                liquidoTotal += (brutoDia - despesasDia);
+                let reservasDia = (registro.ipva || 0) + (registro.manut || 0) + (registro.caixinha || 0);
+                
+                // Soma o lucro livre + as reservas do dia no líquido total da semana
+                liquidoTotal += (brutoDia - despesasDia) + reservasDia;
             }
 
             barrinhaHtml += `
@@ -1784,7 +1792,10 @@
                 custosFixosTotal += ((registro.parcelaCarro || 0) + (registro.seguroCarro || 0));
 
                 let despesasDia = (registro.valorAbast || 0) + (registro.parcelaCarro || 0) + (registro.seguroCarro || 0) + (registro.rua || 0);
-                liquidoTotal += (brutoDia - despesasDia);
+                let reservasDia = (registro.ipva || 0) + (registro.manut || 0) + (registro.caixinha || 0);
+                
+                // Soma o lucro livre + as reservas do dia no líquido total do mês
+                liquidoTotal += (brutoDia - despesasDia) + reservasDia;
             }
 
             calendarioHtml += `
@@ -1904,34 +1915,33 @@
         let container = document.getElementById('listaHistorico');
         if (!container) return;
         if (memoriaHistorico.length === 0) {
-            container.innerHTML = `<div style="text-align: center; color: #777; padding: 20px;">Nenhum lançamento no histórico.</div>`;
+            container.innerHTML = `<div style="text-align: center; color: #777; padding: 20px;">Nenhum histórico encontrado.</div>`;
             return;
         }
 
-        memoriaHistorico.sort((a, b) => new Date(b.data) - new Date(a.data));
-
+        let historicoOrdenado = [...memoriaHistorico].sort((a,b) => new Date(b.data) - new Date(a.data));
         let html = '';
-        memoriaHistorico.forEach((item, index) => {
-            let kmRod = (item.kmFim > item.kmIni) ? (item.kmFim - item.kmIni) : 0;
-            let despesas = (item.valorAbast || 0) + (item.parcelaCarro || 0) + (item.seguroCarro || 0) + (item.rua || 0);
-            let liquido = (item.bruto || 0) - despesas;
-            let dataFormatada = item.data ? item.data.split('-').reverse().join('/') : '-';
+
+        historicoOrdenado.forEach(h => {
+            let despesas = (h.valorAbast || 0) + (h.parcelaCarro || 0) + (h.seguroCarro || 0) + (h.rua || 0);
+            let reservas = (h.ipva || 0) + (h.manut || 0) + (h.caixinha || 0);
+            let liquidoTotal = ((h.bruto || 0) - despesas) + reservas;
+            let dataFormatada = h.data.split('-').reverse().join('/');
 
             html += `
-                <div style="background: #181818; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <strong style="color: var(--primary-color); font-size: 0.95rem;">${dataFormatada} (${item.diaSemana})</strong>
+                <div style="background: #181818; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <strong style="color: var(--primary-color);">${dataFormatada} (${h.diaSemana})</strong>
                         <div>
-                            <button class="btn-sm btn-edit" onclick="editarRegistroHistorico(${index})">Editar</button>
-                            <button class="btn-sm btn-delete" onclick="excluirRegistroHistorico(${index})">Excluir</button>
+                            <button class="btn-sm btn-edit" onclick="carregarParaEdicaoHistorico('${h.data}')">Editar</button>
+                            <button class="btn-sm btn-delete" onclick="excluirItemHistorico('${h.data}')">Excluir</button>
                         </div>
                     </div>
-                    <div style="font-size: 0.85rem; color: #fff; display: flex; justify-content: space-between;">
-                        <span>Bruto: <b>R$ ${(item.bruto || 0).toFixed(2)}</b></span>
-                        <span>Líquido: <b style="color: ${liquido >= 0 ? 'var(--primary-color)' : 'var(--danger-color)'}">R$ ${liquido.toFixed(2)}</b></span>
-                    </div>
-                    <div style="font-size: 0.75rem; color: #aaa; margin-top: 4px;">
-                        KM: ${kmRod} km | Horas: ${item.horas || 0}h | Combustível: R$ ${(item.valorAbast || 0).toFixed(2)}
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.85rem; color: #ccc;">
+                        <div>Bruto: <b>R$ ${(h.bruto || 0).toFixed(2)}</b></div>
+                        <div>Líquido: <b style="color: var(--primary-color);">R$ ${liquidoTotal.toFixed(2)}</b></div>
+                        <div>KM: <b>${(h.kmFim > h.kmIni) ? (h.kmFim - h.kmIni) : 0} km</b></div>
+                        <div>Horas: <b>${(h.horas || 0).toFixed(1)}h</b></div>
                     </div>
                 </div>
             `;
@@ -1939,52 +1949,47 @@
         container.innerHTML = html;
     }
 
-    function editarRegistroHistorico(index) {
-        let item = memoriaHistorico[index];
+    function carregarParaEdicaoHistorico(isoStr) {
+        let reg = memoriaHistorico.find(h => h.data === isoStr);
+        if (!reg) return;
         mudarTab('diario');
-        document.getElementById('dataRegistro').value = item.data || '';
-        document.getElementById('diaSemana').value = item.diaSemana || 'Segunda-feira';
-        document.getElementById('bruto').value = item.bruto || '';
-        document.getElementById('kmInicial').value = item.kmIni || '';
-        document.getElementById('kmFinal').value = item.kmFim || '';
-        document.getElementById('horasOnline').value = item.horas || '0.00';
-        document.getElementById('litros').value = item.litros || '';
-        document.getElementById('valorAbastecido').value = item.valorAbast || '';
-        document.getElementById('gastosRua').value = item.rua || '';
-        document.getElementById('parcelaCarro').value = item.parcelaCarro || '';
-        document.getElementById('seguroCarro').value = item.seguroCarro || '';
-        document.getElementById('reservaIpva').value = item.ipva || '10.00';
-        document.getElementById('reservaManutencao').value = item.manut || '15.00';
-        document.getElementById('reservaCaixinha').value = item.caixinha || '10.00';
+        document.getElementById('dataRegistro').value = reg.data;
+        document.getElementById('diaSemana').value = reg.diaSemana;
+        document.getElementById('bruto').value = reg.bruto || "";
+        document.getElementById('kmInicial').value = reg.kmIni || "";
+        document.getElementById('kmFinal').value = reg.kmFim || "";
+        document.getElementById('horasOnline').value = reg.horas || "";
+        document.getElementById('litros').value = reg.litros || "";
+        document.getElementById('valorAbastecido').value = reg.valorAbast || "";
+        document.getElementById('gastosRua').value = reg.rua || "";
+        document.getElementById('parcelaCarro').value = reg.parcelaCarro || "";
+        document.getElementById('seguroCarro').value = reg.seguroCarro || "";
+        document.getElementById('reservaIpva').value = reg.ipva || "";
+        document.getElementById('reservaManutencao').value = reg.manut || "";
+        document.getElementById('reservaCaixinha').value = reg.caixinha || "";
 
-        document.getElementById('editIndex').value = index;
+        let idx = memoriaHistorico.findIndex(h => h.data === isoStr);
+        document.getElementById('editIndex').value = idx;
         document.getElementById('btnSalvar').innerText = "Atualizar Lançamento";
         calcular();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function excluirRegistroHistorico(index) {
-        if (confirm("Deseja realmente excluir este lançamento do histórico?")) {
-            memoriaHistorico.splice(index, 1);
+    function excluirItemHistorico(isoStr) {
+        if (confirm("Deseja realmente excluir este lançamento?")) {
+            memoriaHistorico = memoriaHistorico.filter(h => h.data !== isoStr);
             salvarNoFirestore();
             renderizarHistorico();
         }
     }
 
-    function atualizarDiaSemanaPorData(idInputData, idSelectDia) {
-        let val = document.getElementById(idInputData).value;
-        if (!val) return;
-        let partes = val.split('-');
-        let dObj = new Date(partes[0], partes[1] - 1, partes[2]);
-        let dias = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-        document.getElementById(idSelectDia).value = dias[dObj.getDay()];
-    }
-
     function toggleMenuDropdown() {
-        document.getElementById('menuDropdown').classList.toggle('show');
+        let menu = document.getElementById('menuDropdown');
+        menu.classList.toggle('show');
     }
 
     window.onclick = function(event) {
-        if (!event.target.matches('.plan-btn-style') && !event.target.closest('.menu-dropdown')) {
+        if (!event.target.matches('.menu-dots-btn') && !event.target.closest('.menu-dropdown')) {
             let dropdowns = document.getElementsByClassName("menu-dropdown");
             for (let i = 0; i < dropdowns.length; i++) {
                 let openDropdown = dropdowns[i];
@@ -1995,53 +2000,86 @@
         }
     }
 
+    function atualizarDiaSemanaPorData(idInputData, idSelectDia) {
+        let val = document.getElementById(idInputData).value;
+        if (!val) return;
+        let partes = val.split('-');
+        let d = new Date(partes[0], partes[1] - 1, partes[2]);
+        let dias = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+        document.getElementById(idSelectDia).value = dias[d.getDay()];
+    }
+
     function salvarNoFirestore() {
         let user = auth.currentUser;
         if (!user) return;
-        db.collection("usuariosData").doc(user.uid).set({
+        db.collection("usuarios").doc(user.uid).set({
             historico: memoriaHistorico,
             manutencoes: memoriaManutencoes,
             config: memoriaConfig,
-            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true }).catch(err => console.error("Erro ao salvar:", err));
     }
 
     function carregarDadosFirestore(user) {
-        db.collection("usuariosData").doc(user.uid).get().then((doc) => {
+        if (unsubscribeFirestore) unsubscribeFirestore();
+        unsubscribeFirestore = db.collection("usuarios").doc(user.uid).onSnapshot(doc => {
             if (doc.exists) {
-                let dados = doc.data();
-                memoriaHistorico = dados.historico || [];
-                memoriaManutencoes = dados.manutencoes || [];
-                if (dados.config) {
-                    memoriaConfig = dados.config;
+                let data = doc.data();
+                memoriaHistorico = data.historico || [];
+                memoriaManutencoes = data.manutencoes || [];
+                if (data.config) {
+                    memoriaConfig = data.config;
                     document.getElementById('cfgParcelaMensal').value = memoriaConfig.parcela || 1375;
                     document.getElementById('cfgSeguroMensal').value = memoriaConfig.seguro || 0;
                     document.getElementById('cfgDiasMes').value = memoriaConfig.diasMes || 26;
                 }
+                atualizarValoresAutomaticosDia();
+                calcular();
             }
-            atualizarValoresAutomaticosDia();
-            inicializarDataHoje();
-            mudarTab('diario');
-        }).catch(err => {
-            console.error("Erro ao carregar:", err);
-            atualizarValoresAutomaticosDia();
-            inicializarDataHoje();
-            mudarTab('diario');
+            
+            // Simulação de verificação de assinatura ativa (libera o sistema ou bloqueia se expirado)
+            usuarioBloqueadoGeral = false; 
+            document.getElementById('telaBloqueio').style.display = 'none';
+            document.getElementById('menuStatusTexto').innerText = "Plano Ativo (Ilimitado)";
+            document.getElementById('menuStatusTexto').style.color = "var(--primary-color)";
+            document.getElementById('statusPlanoDias').innerText = "Sua assinatura está ativa e liberada!";
         });
     }
 
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('telaLogin').style.display = 'none';
+            document.getElementById('containerPrincipal').style.display = 'block';
+            document.getElementById('menuEmailUsuario').innerText = user.email || user.displayName || "Conectado";
+            carregarDadosFirestore(user);
+            inicializarDataHoje();
+        } else {
+            if (unsubscribeFirestore) unsubscribeFirestore();
+            document.getElementById('containerPrincipal').style.display = 'none';
+            document.getElementById('telaLogin').style.display = 'flex';
+        }
+    });
+
     function fazerLoginEmailSenha() {
-        let email = document.getElementById('loginEmail').value;
+        let email = document.getElementById('loginEmail').value.trim();
         let senha = document.getElementById('loginSenha').value;
-        if (!email || !senha) { alert("Preencha e-mail e senha."); return; }
+        if(!email || !senha) { alert("Preencha e-mail e senha."); return; }
         auth.signInWithEmailAndPassword(email, senha).catch(err => alert("Erro ao entrar: " + err.message));
     }
 
     function fazerCadastroEmailSenha() {
-        let email = document.getElementById('loginEmail').value;
+        let email = document.getElementById('loginEmail').value.trim();
         let senha = document.getElementById('loginSenha').value;
-        if (!email || !senha) { alert("Preencha e-mail e senha para criar a conta."); return; }
+        if(!email || !senha) { alert("Preencha e-mail e senha para cadastrar."); return; }
         auth.createUserWithEmailAndPassword(email, senha).catch(err => alert("Erro ao cadastrar: " + err.message));
+    }
+
+    function sairDaConta() {
+        auth.signOut().then(() => {
+            document.getElementById('telaBloqueio').style.display = 'none';
+            let drop = document.getElementById('menuDropdown');
+            if(drop) drop.classList.remove('show');
+        });
     }
 
     function abrirModalEsqueciSenha() {
@@ -2053,44 +2091,16 @@
     }
 
     function enviarEmailRecuperacao() {
-        let email = document.getElementById('emailRecuperacao').value;
-        if (!email) { alert("Digite seu e-mail de recuperação."); return; }
+        let email = document.getElementById('emailRecuperacao').value.trim();
+        if(!email) { alert("Digite seu e-mail de recuperação."); return; }
         auth.sendPasswordResetEmail(email).then(() => {
             alert("E-mail de redefinição enviado com sucesso!");
             fecharModalEsqueciSenha();
         }).catch(err => alert("Erro: " + err.message));
     }
 
-    function sairDaConta() {
-        auth.signOut().then(() => {
-            document.getElementById('telaLogin').style.display = 'flex';
-            document.getElementById('containerPrincipal').style.display = 'none';
-            document.getElementById('telaBloqueio').style.display = 'none';
-        });
-    }
-
-    document.getElementById('btnLogin').addEventListener('click', () => {
-        auth.signInWithPopup(provider).catch(err => alert("Erro Google: " + err.message));
-    });
-    
-    document.getElementById('btnRegister').addEventListener('click', () => {
-        auth.signInWithPopup(provider).catch(err => alert("Erro Google: " + err.message));
-    });
-
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            document.getElementById('telaLogin').style.display = 'none';
-            document.getElementById('containerPrincipal').style.display = 'block';
-            document.getElementById('menuEmailUsuario').innerText = user.email || user.displayName || "Usuário Conectado";
-            document.getElementById('menuStatusTexto').innerText = "Ativo / Conectado";
-            
-            carregarDadosFirestore(user);
-        } else {
-            document.getElementById('telaLogin').style.display = 'flex';
-            document.getElementById('containerPrincipal').style.display = 'none';
-            document.getElementById('telaBloqueio').style.display = 'none';
-        }
-    });
+    document.getElementById('btnLogin').onclick = () => auth.signInWithPopup(provider).catch(err => alert(err.message));
+    document.getElementById('btnRegister').onclick = () => auth.signInWithPopup(provider).catch(err => alert(err.message));
 </script>
 </body>
 </html>
