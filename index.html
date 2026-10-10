@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora do Motorista</title>
+
+    <!-- CONFIGURAÇÕES DE PWA E TELA CHEIA (PARA O ANDROID E IOS FICAREM LIMPOS) -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Calc Motorista">
+    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Calculadora%20do%20Motorista%22%2C%22short_name%22%3A%22CalcMotorista%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23121212%22%2C%22theme_color%22%3A%22%2300e676%22%7D">
+
     <style>
         :root {
             --bg-color: #121212;
@@ -1357,8 +1365,6 @@
                 let expStr = data.dataExpiracao;
                 let expDate = expStr ? new Date(expStr) : new Date();
 
-                // Trava anti-adulteração de data do celular:
-                // Armazena a maior data válida já lida/sincronizada no localStorage para impedir que o usuário volte o relógio do aparelho e ganhe dias.
                 let ultimaDataValidaKey = "maior_data_valida_sistema";
                 let ultimaDataValidaStr = localStorage.getItem(ultimaDataValidaKey);
                 let agora = new Date();
@@ -1366,12 +1372,9 @@
                 if (ultimaDataValidaStr) {
                     let ultimaDataValida = new Date(ultimaDataValidaStr);
                     if (agora < ultimaDataValida) {
-                        // O usuário voltou a data do celular! Forçamos o relógio lógico a considerar a última data válida segura.
                         agora = ultimaDataValida;
                     }
                 }
-                
-                // Atualiza a maior data válida com o horário atual real/seguro
                 localStorage.setItem(ultimaDataValidaKey, agora.toISOString());
 
                 let diffTime = expDate - agora;
